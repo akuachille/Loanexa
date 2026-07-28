@@ -20,7 +20,7 @@
                 Please select a new preferred date for this loan application.
             </MudText>
 
-            <MudDatePicker Label="New Preferred Date"
+            <MudDatePicker ShowToolbar="false" Label="New Preferred Date"
                            @bind-Date="_selectedDate"
                            MinDate="@DateTime.Today"
                            Variant="Variant.Outlined"
@@ -74,3 +74,4 @@
         }
     }
 }
+

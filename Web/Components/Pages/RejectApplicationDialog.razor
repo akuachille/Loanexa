@@ -1,0 +1,28 @@
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-4">Please provide a reason for rejecting this loan application. This information will be saved.</MudText>
+        <MudTextField @bind-Value="RejectionReason" Label="Rejection Reason" Variant="Variant.Outlined" Lines="4" Required="true" RequiredError="A reason is required." />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Submit" Disabled="@(string.IsNullOrWhiteSpace(RejectionReason))">Reject Application</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+
+    private string RejectionReason { get; set; } = string.Empty;
+
+    void Submit()
+    {
+        if (!string.IsNullOrWhiteSpace(RejectionReason))
+        {
+            MudDialog.Close(DialogResult.Ok(RejectionReason));
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}

@@ -20,6 +20,7 @@ namespace Domain.Entities
         public string? ApprovedBy {get;set;} 
         public DateTime CreatedAt {get;set;} = DateTime.Now;
         public string? CreatedBy {get;set;} 
+        public string? RejectionReason {get;set;}
 
     }
 }

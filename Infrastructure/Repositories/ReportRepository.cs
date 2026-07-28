@@ -176,7 +176,7 @@ namespace Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<List<ActivityHeatmapDTO>> GetActivityHeatmapAsync(int days = 365)
+        public async Task<List<ActivityHeatmapDTO>> GetActivityHeatmapAsync(DateTime? startDate = null, DateTime? endDate = null)
         {
             using var dbContext = await _contextFactory.CreateDbContextAsync();
             var currentPersonId = await GetCurrentPersonIdAsync(dbContext);
@@ -191,11 +191,12 @@ namespace Infrastructure.Repositories
                 .ToListAsync();
             var allowedUserIds = allowedUserIdsInt.Select(id => id.ToString()).ToList();
 
-            var startDate = DateTime.UtcNow.Date.AddDays(-days);
+            var start = startDate ?? DateTime.UtcNow.Date.AddDays(-365);
+            var end = endDate ?? DateTime.UtcNow.Date;
 
             var logs = await dbContext.ActivityLogs
                 .AsNoTracking()
-                .Where(a => allowedUserIds.Contains(a.UserId) && a.Timestamp >= startDate)
+                .Where(a => allowedUserIds.Contains(a.UserId) && a.Timestamp.Date >= start.Date && a.Timestamp.Date <= end.Date)
                 .Select(a => new { a.Timestamp.Date })
                 .ToListAsync();
 
@@ -663,7 +664,8 @@ namespace Infrastructure.Repositories
                     ApplicationCode = d.LoanApplication.ApplicationCode ?? "N/A",
                     LoanStatus = d.LoanApplication.Status.ToString(),
                     PrincipalBalance = d.Amount - d.Payments.Where(p => p.IsActive).Sum(p => p.PrincipalPaid),
-                    ApplicationDate = d.LoanApplication.DateofApplication
+                    ApplicationDate = d.LoanApplication.DateofApplication,
+                    IsDefaulted = d.IsActive && DateTime.Now > d.EndDate && d.Payments.Where(p => p.IsActive).Sum(p => p.Amount) < d.Amount
                 }).ToList();
 
                 trackerReports.Add(new LoanProductTrackerDTO

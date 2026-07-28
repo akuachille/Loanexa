@@ -22,242 +22,344 @@
 @inject NavigationManager NavigationManager
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
-@attribute [Authorize(Roles = "Manager,Tenant")]
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-  
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 pb-8" Style="background-color: var(--mud-palette-background-grey); min-height: 100vh;">
     @* --- STATUS ACTION BAR --- *@
-<div class="d-flex align-center justify-space-between pa-4 mb-4 mt-2 rounded shadow-sm bg-white">
-    <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:bold">Loan Application Details</MudText>
-
-    @if (UserContext.PrimaryRole == "Manager" || UserContext.PrimaryRole == "Tenant")
-    {
-        @if (application?.Status != LoanStatus.Paid && application?.Status != LoanStatus.Approved)
+    <div class="d-flex align-center justify-space-between pa-4 mb-6 rounded-lg bg-white mud-elevation-2" style="border-left: 5px solid var(--mud-palette-primary);">
+        <div class="d-flex align-center gap-2">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/Applications"))" Title="Back to Applications" />
+            <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:700;">Loan Application Details</MudText>
+        </div>
+        @if (UserContext.PrimaryRole == "Manager" || UserContext.PrimaryRole == "Tenant")
         {
-            <div class="d-flex gap-2 flex-wrap">
-                @* Reject Button *@
-                <MudButton Variant="Variant.Filled" 
-                           Color="Color.Error" 
-                           StartIcon="@Icons.Material.Filled.Cancel"
-                           OnClick="@(() => HandleStatusUpdate(LoanStatus.Rejected))">
-                    Reject
-                </MudButton>
-                
-                @* Approved Button *@
-                <MudButton Variant="Variant.Filled" 
-                           Color="Color.Success" 
-                           StartIcon="@Icons.Material.Filled.CheckCircle"
-                           OnClick="@(() => HandleStatusUpdate(LoanStatus.Approved))">
-                    Approve
-                </MudButton>
-            </div>
+            @if (application?.Status != LoanStatus.Paid && application?.Status != LoanStatus.Approved)
+            {
+                <div class="d-flex gap-2 flex-wrap">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Cancel" OnClick="@(() => HandleStatusUpdate(LoanStatus.Rejected))">Reject</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.CheckCircle" OnClick="@(() => HandleStatusUpdate(LoanStatus.Approved))" Style="box-shadow: none;">Approve</MudButton>
+                </div>
+            }
         }
-    }
-</div>
-        @* <MudText Typo="Typo.h5" Style="font-weight: 800; color: #1B2559;">Loan Application Details</MudText> *@
-    
+    </div>
 
-    <MudGrid>
-        @* 1. LOAN PRODUCT INFORMATION *@
-        <MudItem xs="12">
-            <MudCard Elevation="2" Class="rounded-lg border-l-4 border-blue-500">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Loan Product Information</MudText>
-                    </CardHeaderContent>
-                    <CardHeaderActions>
-                        <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Primary" Class="ma-2" />
-                    </CardHeaderActions>
-                </MudCardHeader>
-                <MudCardContent>
-                    @if (loanProductSetting != null)
+    @if (borrower == null || application == null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+    }
+    else
+    {
+        @* BORROWER PROFILE & ADDRESS *@
+        <MudPaper Elevation="2" Class="pa-4 mb-4 rounded-lg bg-white" Style="border-top: 4px solid var(--mud-palette-primary);">
+            <MudGrid>
+                <MudItem xs="12" sm="3" md="2" Class="d-flex justify-center align-start">
+                    <MudAvatar Style="width: 100px; height: 100px; font-size: 2.5rem;" Color="Color.Primary" Variant="Variant.Filled">
+                        @(borrower.FirstName?.FirstOrDefault().ToString() + borrower.LastName?.FirstOrDefault().ToString())
+                    </MudAvatar>
+                </MudItem>
+                <MudItem xs="12" sm="9" md="10">
+                    <MudGrid>
+                        <MudItem xs="12" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">First Name</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@borrower.FirstName</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Last Name</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@borrower.LastName</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">ID Number / SSN</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@borrower.IdentificationNumber</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Phone Number</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@borrower.PhoneNumber</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Email Address</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@borrower.Email</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Province</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@borrower.Province</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">District</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@borrower.District</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Sector</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 500;">@borrower.Sector</MudText>
+                        </MudItem>
+                        
+                        @if (borrower.Maritalstatus == Domain.ValueObjects.Maritalstatus.Married)
+                        {
+                            <MudItem xs="12" sm="3">
+                                <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Spouse Name</MudText>
+                                <MudText Typo="Typo.body2" Style="font-weight: 500;">@borrower.SpouceName</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="3">
+                                <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Spouse ID</MudText>
+                                <MudText Typo="Typo.body2" Style="font-weight: 500;">@borrower.SpouceIdNumber</MudText>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @* LOAN PRODUCT INFO *@
+        <div class="d-flex align-center mb-3 mt-4">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Primary" Class="mr-2" />
+            <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 600;">Loan Information</MudText>
+        </div>
+        <MudPaper Elevation="2" Class="pa-4 mb-4 rounded-lg bg-white" Style="border-top: 4px solid var(--mud-palette-primary);">
+            <MudGrid>
+                <MudItem xs="12" sm="3">
+                    <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Application Code</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight: 500;">@application.ApplicationCode</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Application Date</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight: 500;">@application.DateofApplication.ToString("yyyy-MM-dd")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Amount Requested</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight: 500;">@application.AmountRequested.ToString("N0")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Status</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(application.Status)" Class="ml-0 mt-n1">@application.Status</MudChip>
+                </MudItem>
+                
+                @if (loanProductSetting != null)
+                {
+                    <MudItem xs="12" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Product Name</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight: 500;">@loanProductSetting.LoanProduct.ProductName</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Interest Rate</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight: 500;">@loanProductSetting.InterestRate%</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption" Color="Color.Primary" Class="d-block mb-1 font-weight-bold" Style="opacity: 0.8;">Description</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight: 500;">@loanProductSetting.LoanProduct.Description</MudText>
+                    </MudItem>
+                }
+                
+                @if (application.Status == LoanStatus.Rejected && !string.IsNullOrEmpty(application.RejectionReason))
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-2">
+                            <MudText Typo="Typo.subtitle2" Style="font-weight: bold;">Rejection Reason:</MudText>
+                            <MudText Typo="Typo.body2">@application.RejectionReason</MudText>
+                        </MudAlert>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+
+        <MudGrid Spacing="4" Class="mb-4">
+            @* GUARANTORS *@
+            <MudItem xs="12" md="6">
+                <div class="d-flex align-center mb-3 mt-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Group" Color="Color.Primary" Class="mr-2" />
+                    <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 600;">Emergency Contact / Guarantors</MudText>
+                </div>
+                <MudPaper Elevation="2" Class="rounded-lg bg-white overflow-hidden h-100" Style="border-top: 4px solid var(--mud-palette-primary);">
+                    @if (guarantors.Any())
                     {
-                        <MudGrid>
-                            <MudItem xs="12" sm="6">
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">Product Name</MudText>
-                                <MudText Typo="Typo.body1"><b>@loanProductSetting.LoanProduct.ProductName</b></MudText>
-                            </MudItem>
-                            <MudItem xs="12" sm="6">
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">Interest Rate</MudText>
-                                <MudText Typo="Typo.body1" Color="Color.Success"><b>@loanProductSetting.InterestRate%</b></MudText>
-                            </MudItem>
-                            <MudItem xs="12">
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">Description</MudText>
-                                <MudText Typo="Typo.body1">@loanProductSetting.LoanProduct.Description</MudText>
-                            </MudItem>
-                        </MudGrid>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #e0e0e0; background-color: #FAFAFA;">
+                                    <th style="padding: 8px 16px; text-align: left; font-size: 12px; color: var(--mud-palette-primary); font-weight: 600;">Contact Name</th>
+                                    <th style="padding: 8px 16px; text-align: left; font-size: 12px; color: var(--mud-palette-primary); font-weight: 600;">Contact Details</th>
+                                    <th style="padding: 8px 16px; text-align: left; font-size: 12px; color: var(--mud-palette-primary); font-weight: 600;">Location</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var g in guarantors)
+                                {
+                                    <tr style="border-bottom: 1px solid #f0f0f0;">
+                                        <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">
+                                            @(string.IsNullOrEmpty(g.CompanyName) ? $"{g.FirstName} {g.LastName}" : g.CompanyName)<br/>
+                                            <span style="font-size:11px; color: #6c757d;">ID: @g.Identification</span><br/>
+                                            <span style="font-size:11px; color: #6c757d;">Type: @(g.GuarantorType?.Name ?? "-")</span>
+                                        </td>
+                                        <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">
+                                            @g.PhoneNumber<br/>
+                                            <span style="font-size:11px; color: #6c757d;">@g.Email</span>
+                                        </td>
+                                        <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">
+                                            @g.Province<br/>
+                                            <span style="font-size:11px; color: #6c757d;">@g.District</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     }
                     else
                     {
-                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
-                    }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        @* 2. BORROWER DETAILS *@
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="2" Class="rounded-lg" Style="height: 100%;">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Borrower Profile</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    @if (borrower != null)
-                    {
-                        <div class="d-flex flex-column gap-2">
-                            <MudText><b>Full Name:</b> @borrower.FirstName @borrower.LastName</MudText>
-                            <MudText><b>ID Number:</b> @borrower.IdentificationNumber</MudText>
-                            <MudText><b>Email:</b> @borrower.Email</MudText>
-                            <MudText><b>Phone:</b> @borrower.PhoneNumber</MudText>
-                            
-                            <MudDivider Class="my-2" />
-                            
-                            <MudText Typo="Typo.subtitle2" Color="Color.Primary">Location Details</MudText>
-                            <MudText Typo="Typo.body2">@borrower.Province, @borrower.District, @borrower.Sector</MudText>
-                            
-                            @if (borrower.Maritalstatus == Domain.ValueObjects.Maritalstatus.Married)
-                            {
-                                <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
-                                    Spouse: @borrower.SpouceName (@borrower.SpouceIdNumber)
-                                </MudAlert>
-                            }
+                        <div class="pa-4 text-center">
+                            <MudText Typo="Typo.body2" Color="Color.Primary" Style="opacity: 0.7;">No guarantors assigned.</MudText>
                         </div>
                     }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+                </MudPaper>
+            </MudItem>
 
-        @* 3. GUARANTORS TABLE *@
-        <MudItem xs="12" md="6">
-            <MudTable Items="@guarantors" Dense="true" Hover="true" Elevation="2" Class="rounded-lg" Style="height: 100%;">
-                <ToolBarContent>
-                    <MudText Typo="Typo.h6">Guarantors</MudText>
-                </ToolBarContent>
-                <HeaderContent>
-                    <MudTh>Name</MudTh>
-                    <MudTh>ID Number</MudTh>
-                    <MudTh>Phone</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd DataLabel="Name">
-                        @if (!string.IsNullOrEmpty(context.CompanyName))
-                        {
-                            @context.CompanyName
-                        }
-                        else
-                        {
-                            @($"{context.FirstName} {context.LastName}")
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="ID Number">@context.Identification</MudTd>
-                    <MudTd DataLabel="Phone">@context.PhoneNumber</MudTd>
-                </RowTemplate>
-            </MudTable>
-        </MudItem>
+            @* COLLATERAL *@
+            <MudItem xs="12" md="6">
+                <div class="d-flex align-center mb-3 mt-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Primary" Class="mr-2" />
+                    <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 600;">Collateral Assets</MudText>
+                </div>
+                <MudPaper Elevation="2" Class="rounded-lg bg-white overflow-hidden h-100" Style="border-top: 4px solid var(--mud-palette-primary);">
+                    @if (collaterals.Any())
+                    {
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #e0e0e0; background-color: #FAFAFA;">
+                                    <th style="padding: 8px 16px; text-align: left; font-size: 12px; color: var(--mud-palette-primary); font-weight: 600;">Asset Name</th>
+                                    <th style="padding: 8px 16px; text-align: left; font-size: 12px; color: var(--mud-palette-primary); font-weight: 600;">Estimated Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var c in collaterals)
+                                {
+                                    <tr style="border-bottom: 1px solid #f0f0f0;">
+                                        <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">@c.AssetName<br/><span style="font-size:11px; color: #6c757d;">@c.AssetType</span></td>
+                                        <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">@c.EstimatedValue.ToString("N0") RWF</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="pa-4 text-center">
+                            <MudText Typo="Typo.body2" Color="Color.Primary" Style="opacity: 0.7;">No collateral registered.</MudText>
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
 
-<MudItem xs="12" md="6">
-    <MudTable Items="@collaterals" Dense="true" Hover="true" Elevation="2" Class="rounded-lg" Style="height: 100%;">
-        <ToolBarContent>
-            <MudText Typo="Typo.h6">Collateral Assets</MudText>
-        </ToolBarContent>
-        <HeaderContent>
-            <MudTh>Asset Name</MudTh>
-            <MudTh>Type</MudTh>
-            <MudTh>Estimated Value</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd DataLabel="Asset Name">@context.AssetName</MudTd>
-            <MudTd DataLabel="Type">@context.AssetType</MudTd>
-            <MudTd DataLabel="Value">@context.EstimatedValue.ToString("N0") RWF</MudTd>
-            <MudTd DataLabel="ID Number">@context.IdentificationNumber</MudTd>
-        </RowTemplate>
-        <NoRecordsContent>
-            <MudText Typo="Typo.body2" Class="pa-4">No collateral registered for this application.</MudText>
-        </NoRecordsContent>
-    </MudTable>
-</MudItem>
+        <MudGrid Spacing="4" Class="mb-4">
+            @* MISSING MANDATORY DOCUMENTS *@
+            <MudItem xs="12" md="6">
+                <div class="d-flex align-center mb-3 mt-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" Class="mr-2" />
+                    <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 600;">Missing Mandatory Documents</MudText>
+                </div>
+                <MudPaper Elevation="2" Class="rounded-lg bg-white overflow-hidden h-100" Style="border-top: 4px solid var(--mud-palette-primary);">
+                    @if (missingDocuments.Any())
+                    {
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #e0e0e0; background-color: #FAFAFA;">
+                                    <th style="padding: 8px 16px; text-align: left; font-size: 12px; color: var(--mud-palette-primary); font-weight: 600;">Document Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var m in missingDocuments)
+                                {
+                                    <tr style="border-bottom: 1px solid #f0f0f0;">
+                                        <td style="padding: 12px 16px; font-size: 13px; font-weight: 500; color: #d32f2f;">@m.DocumentName<br/><span style="font-size:11px; font-weight: normal;">@m.DocumentType</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="pa-4 text-center">
+                            <MudText Typo="Typo.body2" Color="Color.Success">There are no missing required documents.</MudText>
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
 
-<MudItem xs="12" md="6">
-    <MudTable Items="@missingDocuments" Dense="true" Hover="true" Elevation="2" Class="rounded-lg" Style="height: 100%;">
-        <ToolBarContent>
-            <MudText Typo="Typo.h6" Color="Color.Error">Missing Mandatory Documents</MudText>
-        </ToolBarContent>
-        <HeaderContent>
-            <MudTh>Document Name</MudTh>
-            <MudTh>Document Type</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd DataLabel="Document Name">@context.DocumentName</MudTd>
-            <MudTd DataLabel="Document Type">@context.DocumentType</MudTd>
-        </RowTemplate>
-        <NoRecordsContent>
-            <MudText Typo="Typo.body2" Class="pa-4" Color="Color.Success">There is no missing required document.</MudText>
-        </NoRecordsContent>
-    </MudTable>
-</MudItem>
-
-        @* 4. UPLOADED DOCUMENTS *@
-        <MudItem xs="12">
-            <MudCard Elevation="2" Class="rounded-lg">
-                <MudCardContent>
-                    <MudText Typo="Typo.h6" Class="mb-4">Supporting Documents</MudText>
-                    <MudList T="string">
-                        @foreach (var doc in documents)
-                        {
-                            <MudListItem Icon="@Icons.Material.Filled.AttachFile">
-                                <div class="d-flex align-center justify-space-between">
-                                    <MudText>@doc.DocumentName</MudText>
-                                    <div class="d-flex gap-2">
-                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => ViewDocument(doc))">View</MudButton>
-                                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" OnClick="@(() => DownloadDocument(doc))">Download</MudButton>
+            @* UPLOADED DOCUMENTS *@
+            <MudItem xs="12" md="6">
+                <div class="d-flex align-center mb-3 mt-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" Class="mr-2" />
+                    <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 600;">Supporting Documents</MudText>
+                </div>
+                <MudPaper Elevation="2" Class="rounded-lg bg-white overflow-hidden h-100" Style="border-top: 4px solid var(--mud-palette-primary);">
+                    @if (documents.Any())
+                    {
+                        <MudList T="string" Class="pa-0">
+                            @foreach (var doc in documents)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.AttachFile" Class="border-b-1" Style="border-color: #f0f0f0; border-bottom-style: solid;">
+                                    <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                                        <MudText Typo="Typo.body2" Style="font-weight: 500; font-size: 13px;">@doc.DocumentName</MudText>
+                                        <div class="d-flex gap-1">
+                                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="@(() => ViewDocument(doc))">View</MudButton>
+                                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="@(() => DownloadDocument(doc))">Download</MudButton>
+                                        </div>
                                     </div>
-                                </div>
-                            </MudListItem>
-                        }
-                    </MudList>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                    else
+                    {
+                        <div class="pa-4 text-center">
+                            <MudText Typo="Typo.body2" Color="Color.Primary" Style="opacity: 0.7;">No supporting documents found.</MudText>
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+        
         @if (application?.Status == LoanStatus.Paid)
         {
-            <MudItem xs="12">
-                <MudCard Elevation="2" Class="rounded-lg">
-                    <MudCardContent>
-                        <MudText Typo="Typo.h6" Class="mb-4">Transaction Details</MudText>
-
-                        @if (transactions == null || !transactions.Any())
-                        {
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">No transactions found for this application.</MudText>
-                        }
-                        else
-                        {
-                            <MudTable Items="@transactions" Dense="true" Hover="true" Striped="true">
-                                <HeaderContent>
-                                    <MudTh>Date</MudTh>
-                                    <MudTh>Type</MudTh>
-                                    <MudTh>Description</MudTh>
-                                    <MudTh>Amount</MudTh>
-                                </HeaderContent>
-                                <RowTemplate>
-                                    <MudTd DataLabel="Date">@context.TransactionDate.ToString("yyyy-MM-dd HH:mm")</MudTd>
-                                    <MudTd DataLabel="Type">
-                                        <MudChip T="string" Size="Size.Small" Color="@GetTransactionColor(context.TransactionType)">
-                                            @context.TransactionType
+            @* TRANSACTIONS *@
+            <div class="d-flex align-center mb-3 mt-4">
+                <MudIcon Icon="@Icons.Material.Filled.Receipt" Color="Color.Primary" Class="mr-2" />
+                <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 600;">Transaction Details</MudText>
+            </div>
+            <MudPaper Elevation="2" Class="mb-4 rounded-lg bg-white overflow-hidden" Style="border-top: 4px solid var(--mud-palette-primary);">
+                @if (transactions != null && transactions.Any())
+                {
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #e0e0e0; background-color: #FAFAFA;">
+                                <th style="padding: 8px 16px; text-align: left; font-size: 12px; color: var(--mud-palette-primary); font-weight: 600;">Date</th>
+                                <th style="padding: 8px 16px; text-align: left; font-size: 12px; color: var(--mud-palette-primary); font-weight: 600;">Type</th>
+                                <th style="padding: 8px 16px; text-align: left; font-size: 12px; color: var(--mud-palette-primary); font-weight: 600;">Description</th>
+                                <th style="padding: 8px 16px; text-align: left; font-size: 12px; color: var(--mud-palette-primary); font-weight: 600;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var t in transactions)
+                            {
+                                <tr style="border-bottom: 1px solid #f0f0f0;">
+                                    <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">@t.TransactionDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">
+                                        <MudChip T="string" Size="Size.Small" Color="@GetTransactionColor(t.TransactionType)" Class="ml-0">
+                                            @t.TransactionType
                                         </MudChip>
-                                    </MudTd>
-                                    <MudTd DataLabel="Description">@context.Description</MudTd>
-                                    <MudTd DataLabel="Amount">@context.Amount.ToString("N2")</MudTd>
-                                </RowTemplate>
-                            </MudTable>
-                        }
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
+                                    </td>
+                                    <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">@t.Description</td>
+                                    <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">@t.Amount.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="pa-4 text-center">
+                        <MudText Typo="Typo.body2" Color="Color.Primary" Style="opacity: 0.7;">No transactions found.</MudText>
+                    </div>
+                }
+            </MudPaper>
         }
-    </MudGrid>
+    }
 </MudContainer>
 
 @code {
@@ -343,6 +445,19 @@
             if (confirm != true) return;
         }
 
+        string? rejectionReason = null;
+        if (newStatus == LoanStatus.Rejected)
+        {
+            var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+            var dialog = await DialogService.ShowAsync<RejectApplicationDialog>("Reject Application", options);
+            var result = await dialog.Result;
+            if (result.Canceled)
+            {
+                return;
+            }
+            rejectionReason = result.Data as string;
+        }
+
         var updateDto = new UpdateApplicationDTO
         {
             Status = newStatus,
@@ -350,7 +465,8 @@
             ApprovedBy = UserContext.FullName ?? "Manager", 
             PreferredDate = rescheduledDate ?? application.PreferredDate,
             DateofApplication = application.DateofApplication,
-            PaymentModalityId = application.PaymentModalityId
+            PaymentModalityId = application.PaymentModalityId,
+            RejectionReason = rejectionReason
         };
 
         try
@@ -360,7 +476,7 @@
             
             // Refresh this view, then notify the parent grid to reload.
             await LoadData();
-            MudDialog?.Close(DialogResult.Ok(true));
+            NavigationManager.NavigateTo("/Applications");
         }
         catch (Exception ex)
         {

@@ -252,7 +252,7 @@
             <div class="overview-title">Overview</div>
         </div>
         <div class="d-flex align-center gap-3">
-            <MudDateRangePicker @bind-DateRange="_dateRange" 
+            <MudDateRangePicker ShowToolbar="false" @bind-DateRange="_dateRange" 
                                 Margin="Margin.Dense" 
                                 Variant="Variant.Outlined" 
                                 Color="MudBlazor.Color.Primary" 
@@ -455,17 +455,52 @@
         TotalDisbursed = filteredDisbursements.Sum(d => d.Amount);
         ActiveBorrowers = filteredApps.Where(a => a.Status == LoanStatus.Disbursed || a.Status == LoanStatus.Rescheduled).Select(a => a.BorrowerId).Distinct().Count();
 
-        // Load chart data: Application Trend over the last 12 months
-        var last12Months = Enumerable.Range(0, 12)
-            .Select(i => DateTime.Now.AddMonths(-i))
-            .OrderBy(d => d)
-            .ToList();
+        // Load chart data: Application Trend based on selected date range
+        if (_dateRange?.Start != null && _dateRange?.End != null)
+        {
+            var start = _dateRange.Start.Value.Date;
+            var end = _dateRange.End.Value.Date;
+            
+            var daysDiff = (end - start).TotalDays;
+            if (daysDiff <= 60)
+            {
+                var dates = Enumerable.Range(0, (int)daysDiff + 1).Select(i => start.AddDays(i)).ToList();
+                TrendData = dates.Select((date, index) => new MonthlyApplicationData {
+                    Month = date.ToString("dd MMM"),
+                    Count = appsAll.Count(a => a.DateofApplication.Date == date.Date),
+                    SortOrder = index
+                }).ToList();
+            }
+            else
+            {
+                var months = new List<DateTime>();
+                var current = new DateTime(start.Year, start.Month, 1);
+                while (current <= end)
+                {
+                    months.Add(current);
+                    current = current.AddMonths(1);
+                }
+                
+                TrendData = months.Select((month, index) => new MonthlyApplicationData {
+                    Month = month.ToString("MMM yyyy"),
+                    Count = appsAll.Count(a => a.DateofApplication.Month == month.Month && a.DateofApplication.Year == month.Year),
+                    SortOrder = index
+                }).ToList();
+            }
+        }
+        else
+        {
+            var last12Months = Enumerable.Range(0, 12)
+                .Select(i => DateTime.Now.AddMonths(-i))
+                .OrderBy(d => d)
+                .ToList();
 
-        TrendData = last12Months.Select((month, index) => new MonthlyApplicationData {
-            Month = month.ToString("MMM yyyy"),
-            Count = appsAll.Count(a => a.DateofApplication.Month == month.Month && a.DateofApplication.Year == month.Year),
-            SortOrder = index
-        }).ToList();
+            TrendData = last12Months.Select((month, index) => new MonthlyApplicationData {
+                Month = month.ToString("MMM yyyy"),
+                Count = appsAll.Count(a => a.DateofApplication.Month == month.Month && a.DateofApplication.Year == month.Year),
+                SortOrder = index
+            }).ToList();
+        }
 
         // Load account balances by type (Real Data)
         var accounts = await AccountService.GetAllAccountsAsync();
@@ -486,7 +521,7 @@
             AccountBalances = new List<AccountBalanceByType>();
         }
         
-        HeatmapData = await ReportService.GetActivityHeatmapAsync(365);
+        HeatmapData = await ReportService.GetActivityHeatmapAsync(_dateRange?.Start, _dateRange?.End);
         
         StateHasChanged();
     }
@@ -505,3 +540,4 @@
 
     public class AccountBalanceByType { public string Type { get; set; } = ""; public decimal Balance { get; set; } }
 }
+

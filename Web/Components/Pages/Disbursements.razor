@@ -30,7 +30,7 @@
                                   AdornmentIcon="@Icons.Material.Filled.PersonSearch" Adornment="Adornment.Start"/>
                 </MudItem>
                 <MudItem xs="12" sm="4">
-                    <MudDatePicker @bind-Date="_filterDate" Label="Disbursed Date" Variant="Variant.Outlined" Margin="Margin.Dense"
+                    <MudDatePicker ShowToolbar="false" @bind-Date="_filterDate" Label="Disbursed Date" Variant="Variant.Outlined" Margin="Margin.Dense"
                                    Clearable="true" />
                 </MudItem>
             </MudGrid>
@@ -212,3 +212,4 @@
         await DialogService.ShowAsync<RepaymentSchedulePrintDialog>("Print Repayment Schedule", parameters, options);
     }
 }
+

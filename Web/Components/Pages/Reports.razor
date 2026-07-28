@@ -383,7 +383,7 @@
         <MudPaper Class="pa-4 mb-4" Elevation="0">
             <MudGrid>
                 <MudItem xs="12" sm="4">
-                    <MudDateRangePicker Label="Disbursement Period" @bind-DateRange="_disbursementRange" />
+                    <MudDateRangePicker ShowToolbar="false" Label="Disbursement Period" @bind-DateRange="_disbursementRange" />
                 </MudItem>
                 <MudItem xs="12" sm="4">
                     <MudTextField @bind-Value="_loanTypeFilter"
@@ -432,7 +432,7 @@
         <MudPaper Class="pa-4 mb-4" Elevation="0">
             <MudGrid>
                 <MudItem xs="12" sm="4">
-                    <MudDateRangePicker Label="Maturity Period" @bind-DateRange="_maturityRange" />
+                    <MudDateRangePicker ShowToolbar="false" Label="Maturity Period" @bind-DateRange="_maturityRange" />
                 </MudItem>
                 <MudItem xs="12" sm="4" Class="d-flex align-end">
                     <MudButton Variant="Variant.Filled" Color="MudBlazor.Color.Primary" OnClick="LoadMaturityReport" StartIcon="@Icons.Material.Filled.Refresh">Generate Report</MudButton>
@@ -475,7 +475,7 @@
         <MudPaper Class="pa-6 mb-6 rounded-xl" Elevation="0" Style="background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2);">
             <MudGrid>
                 <MudItem xs="12" sm="4">
-                    <MudDateRangePicker Label="Activity Period" @bind-DateRange="_activityRange" Class="rounded-lg" />
+                    <MudDateRangePicker ShowToolbar="false" Label="Activity Period" @bind-DateRange="_activityRange" Class="rounded-lg" />
                 </MudItem>
                 <MudItem xs="12" sm="4">
                     <MudSelect T="string" @bind-Value="_activityUserSearch" Label="Select Sub-User" Placeholder="Select a user">
@@ -789,11 +789,6 @@
                         <MudChip T="string" Color="@(context.Item.Status == "Approved" ? MudBlazor.Color.Success : context.Item.Status == "Rejected" ? MudBlazor.Color.Error : MudBlazor.Color.Warning)" Size="MudBlazor.Size.Small">@context.Item.Status</MudChip>
                     </CellTemplate>
                 </TemplateColumn>
-                <TemplateColumn Title="Action">
-                    <CellTemplate>
-                        <MudIconButton Icon="@Icons.Material.Filled.ReadMore" Color="MudBlazor.Color.Primary" Size="MudBlazor.Size.Small" OnClick="@(() => NavigateToApplication(context.Item.ApplicationId))" />
-                    </CellTemplate>
-                </TemplateColumn>
             </Columns>
             <PagerContent>
                 <MudDataGridPager T="ApplicationStatusReportDTO" />
@@ -819,6 +814,40 @@
     }
     else if (_activeReport == "LoanProductTracker")
     {
+        <MudPaper Class="pa-4 mb-4" Elevation="0">
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudDateRangePicker ShowToolbar="false" Label="Application Date Range" DateRange="_trackerDateRange" DateRangeChanged="OnTrackerDateRangeChanged" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" Value="_selectedTrackerProductId" ValueChanged="OnTrackerProductChanged" Label="Select Loan Product" Clearable="true">
+                        <MudSelectItem T="int?" Value="@((int?)null)">All Products</MudSelectItem>
+                        @foreach (var p in _loanProductTrackers)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)p.ProductId)">@p.ProductName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mb-4" Elevation="0">
+            <div class="chart-container" style="display: flex; justify-content: center;">
+                <ApexCharts.ApexChart @ref="_trackerChart" TItem="TrackerChartData"
+                           Title="Finished Without Overdue vs Defaulted"
+                           Height="300"
+                           Width="500"
+                           Options="_trackerChartOptions">
+                    <ApexCharts.ApexPointSeries TItem="TrackerChartData"
+                                     Items="_trackerChartData"
+                                     Name="Count"
+                                     SeriesType="ApexCharts.SeriesType.Donut"
+                                     XValue="@(e => e.Label)"
+                                     YAggregate="@(e => e.Sum(x => x.Value))" />
+                </ApexCharts.ApexChart>
+            </div>
+        </MudPaper>
+
         <MudDataGrid Items="@_loanProductTrackers" Hover="true" Striped="true" Class="mt-4">
             <ToolBarContent>
                 <MudText Typo="Typo.h6">Loan Product Tracker</MudText>
@@ -1029,6 +1058,61 @@
     private List<ApplicationStatusReportDTO> _applicationStatuses = new();
     private List<LoanProductTrackerDTO> _loanProductTrackers = new();
 
+    public class TrackerChartData
+    {
+        public string Label { get; set; } = string.Empty;
+        public decimal Value { get; set; }
+    }
+    
+    private DateRange _trackerDateRange = new DateRange(new DateTime(DateTime.Now.Year, 1, 1), DateTime.Now.Date);
+    private int? _selectedTrackerProductId;
+    private List<TrackerChartData> _trackerChartData = new();
+    private ApexCharts.ApexChartOptions<TrackerChartData> _trackerChartOptions = new()
+    {
+        Chart = new ApexCharts.Chart
+        {
+            Animations = new ApexCharts.Animations { Enabled = true }
+        }
+    };
+    
+    private ApexCharts.ApexChart<TrackerChartData>? _trackerChart;
+    
+    private async Task OnTrackerDateRangeChanged(DateRange range)
+    {
+        _trackerDateRange = range;
+        await UpdateTrackerChartDataAsync();
+    }
+
+    private async Task OnTrackerProductChanged(int? productId)
+    {
+        _selectedTrackerProductId = productId;
+        await UpdateTrackerChartDataAsync();
+    }
+    
+    private async Task UpdateTrackerChartDataAsync()
+    {
+        var allBorrowers = _loanProductTrackers
+            .Where(p => _selectedTrackerProductId == null || p.ProductId == _selectedTrackerProductId.Value)
+            .SelectMany(p => p.Borrowers)
+            .Where(b => _trackerDateRange?.Start == null || b.ApplicationDate.Date >= _trackerDateRange.Start.Value.Date)
+            .Where(b => _trackerDateRange?.End == null || b.ApplicationDate.Date <= _trackerDateRange.End.Value.Date)
+            .ToList();
+            
+        int finishedCount = allBorrowers.Count(b => b.LoanStatus == "Paid");
+        int defaultedCount = allBorrowers.Count(b => b.IsDefaulted);
+        
+        _trackerChartData = new List<TrackerChartData>
+        {
+            new TrackerChartData { Label = "Finished (No Overdue)", Value = finishedCount },
+            new TrackerChartData { Label = "Defaulted", Value = defaultedCount }
+        };
+
+        if (_trackerChart != null)
+        {
+            await _trackerChart.RenderAsync();
+        }
+    }
+
     private DateRange _accountHistoryRange = new DateRange(new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1), DateTime.Now);
     private List<AccountHistoryReportDTO> _accountHistories = new();
     private async Task LoadAccountHistoryReport()
@@ -1097,7 +1181,10 @@
         try { _overdues = await ReportService.GetOverdueReportAsync(); } catch { }
         try { _customerPortfolios = await ReportService.GetCustomerPortfolioReportAsync(); } catch { }
         try { _applicationStatuses = await ReportService.GetApplicationStatusReportAsync(); } catch { }
-        try { _loanProductTrackers = await ReportService.GetLoanProductTrackerAsync(); } catch { }
+        try { 
+            _loanProductTrackers = await ReportService.GetLoanProductTrackerAsync(); 
+            await UpdateTrackerChartDataAsync();
+        } catch { }
     }
 
     private async Task LoadActiveLoans()
@@ -1334,3 +1421,4 @@
         };
     }
 }
+

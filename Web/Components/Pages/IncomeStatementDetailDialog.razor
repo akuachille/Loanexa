@@ -24,9 +24,9 @@
                     <MudDataGrid Items="@Statement.InterestDetails" Dense="true" Hover="true">
                         <Columns>
                             <PropertyColumn Property="x => x.NameOfInterest" Title="Name of Interest" />
-                            <PropertyColumn Property="x => x.Amount" Title="Amount" Format="N2" />
                             <PropertyColumn Property="x => x.AccountReceiver" Title="Account Receiver" />
                             <PropertyColumn Property="x => x.DateOfInterest" Title="Date" Format="yyyy-MM-dd" />
+                            <PropertyColumn Property="x => x.Amount" Title="Amount" Format="N2" />
                         </Columns>
                     </MudDataGrid>
                     <div class="d-flex justify-end mt-4">
@@ -38,8 +38,8 @@
                         <Columns>
                             <PropertyColumn Property="x => x.LoanApplicationCode" Title="Loan App" />
                             <PropertyColumn Property="x => x.PaymentDate" Title="Payment Date" Format="yyyy-MM-dd" />
-                            <PropertyColumn Property="x => x.Amount" Title="Amount" Format="N2" />
                             <PropertyColumn Property="x => x.AccountReceiver" Title="Account Receiver" />
+                            <PropertyColumn Property="x => x.Amount" Title="Amount" Format="N2" />
                         </Columns>
                     </MudDataGrid>
                     <div class="d-flex justify-end mt-4">
@@ -51,8 +51,8 @@
                         <Columns>
                             <PropertyColumn Property="x => x.LoanApplicationCode" Title="Loan App" />
                             <PropertyColumn Property="x => x.PaymentDate" Title="Payment Date" Format="yyyy-MM-dd" />
-                            <PropertyColumn Property="x => x.Amount" Title="Amount" Format="N2" />
                             <PropertyColumn Property="x => x.Reason" Title="Reason" />
+                            <PropertyColumn Property="x => x.Amount" Title="Amount" Format="N2" />
                         </Columns>
                     </MudDataGrid>
                     <div class="d-flex justify-end mt-4">
@@ -82,9 +82,9 @@
                     <MudDataGrid Items="@Statement.OperatingExpenseDetails" Dense="true" Hover="true">
                         <Columns>
                             <PropertyColumn Property="x => x.ExpenseName" Title="Expense Name" />
-                            <PropertyColumn Property="x => x.Amount" Title="Amount" Format="N2" />
                             <PropertyColumn Property="x => x.ExpenseDate" Title="Expense Date" Format="yyyy-MM-dd" />
                             <PropertyColumn Property="x => x.AccountFunding" Title="Account Funding" />
+                            <PropertyColumn Property="x => x.Amount" Title="Amount" Format="N2" />
                         </Columns>
                     </MudDataGrid>
                     <div class="d-flex justify-end mt-4">
@@ -95,9 +95,9 @@
                     <MudDataGrid Items="@Statement.WaiverDetails" Dense="true" Hover="true">
                         <Columns>
                             <PropertyColumn Property="x => x.LoanApplicationCode" Title="Loan App" />
-                            <PropertyColumn Property="x => x.AmountWaived" Title="Amount Waived" Format="N2" />
                             <PropertyColumn Property="x => x.WaiverType" Title="Waiver Type" />
                             <PropertyColumn Property="x => x.WaivingDate" Title="Waiving Date" Format="yyyy-MM-dd" />
+                            <PropertyColumn Property="x => x.AmountWaived" Title="Amount Waived" Format="N2" />
                         </Columns>
                     </MudDataGrid>
                     <div class="d-flex justify-end mt-4">

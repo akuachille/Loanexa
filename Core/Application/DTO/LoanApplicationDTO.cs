@@ -22,5 +22,6 @@ namespace Application.DTO
         public  LoanStatus Status {get;set;}
         public DateTime PreferredDate{get;set;}
         public DateTime DateofApplication{get;set;}
+        public string? RejectionReason {get;set;}
     }
 }

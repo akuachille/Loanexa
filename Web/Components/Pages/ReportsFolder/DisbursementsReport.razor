@@ -4,7 +4,7 @@
 <MudPaper Class="pa-4 mb-4" Elevation="0">
     <MudGrid>
         <MudItem xs="12" sm="4">
-            <MudDateRangePicker Label="Disbursement Period" DateRange="DisbursementRange" DateRangeChanged="OnDisbursementRangeChanged" />
+            <MudDateRangePicker ShowToolbar="false" Label="Disbursement Period" DateRange="DisbursementRange" DateRangeChanged="OnDisbursementRangeChanged" />
         </MudItem>
         <MudItem xs="12" sm="4">
             <MudTextField Value="@LoanTypeFilter"
@@ -88,3 +88,4 @@
         return false;
     };
 }
+

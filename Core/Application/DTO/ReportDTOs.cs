@@ -274,6 +274,7 @@ namespace Application.DTO
         public string LoanStatus { get; set; } = string.Empty;
         public decimal PrincipalBalance { get; set; }
         public DateTime ApplicationDate { get; set; }
+        public bool IsDefaulted { get; set; }
     }
 
     public class AccountHistoryReportDTO

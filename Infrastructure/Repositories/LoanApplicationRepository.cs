@@ -10,13 +10,16 @@ namespace Infrastructure.Repositories
     {
         // private readonly ApplicationDbContext dbContext;
         // public LoanApplicationRepository(ApplicationDbContext context)
- private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
+     private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
      private readonly IUserContext _userContext;
-    public LoanApplicationRepository(IDbContextFactory<ApplicationDbContext> contextFactory, IUserContext userContext)
+     private readonly IEmailService _emailService;
+
+    public LoanApplicationRepository(IDbContextFactory<ApplicationDbContext> contextFactory, IUserContext userContext, IEmailService emailService)
         {
         //    dbContext=context; 
          _contextFactory = contextFactory;
          _userContext = userContext;
+         _emailService = emailService;
         }
         public  async Task<List<LoanApplication>> GetAllLoanApplicationsAsync()
         {
@@ -141,15 +144,36 @@ namespace Infrastructure.Repositories
                     _loanApplication.Status = loanApplicationDTO.Status; // Assuming DTO uses LoanStatus enum
                     _loanApplication.PreferredDate = loanApplicationDTO.PreferredDate;
                     _loanApplication.DateofApplication = loanApplicationDTO.DateofApplication;
+                    if (loanApplicationDTO.Status == LoanStatus.Rejected && !string.IsNullOrEmpty(loanApplicationDTO.RejectionReason))
+                    {
+                        _loanApplication.RejectionReason = loanApplicationDTO.RejectionReason;
+                    }
 
                     dbContext.LoanApplications.Update(_loanApplication);
+                    var logMessage = $"Edited loan application {_loanApplication.ApplicationCode}. Amount {oldAmount:N2} to {_loanApplication.AmountRequested:N2}; status {oldStatus} to {_loanApplication.Status}.";
+                    if (_loanApplication.Status == LoanStatus.Rejected && !string.IsNullOrEmpty(_loanApplication.RejectionReason))
+                    {
+                        logMessage += $" Reason: {_loanApplication.RejectionReason}";
+                    }
+
                     dbContext.ActivityLogs.Add(ActivityLogFactory.Create(
                         _userContext,
                         "Loan Application Edited",
                         nameof(LoanApplication),
                         _loanApplication.ApplicationCode,
-                        $"Edited loan application {_loanApplication.ApplicationCode}. Amount {oldAmount:N2} to {_loanApplication.AmountRequested:N2}; status {oldStatus} to {_loanApplication.Status}."));
+                        logMessage));
 
+                    if (_loanApplication.Status == LoanStatus.Rejected && oldStatus != LoanStatus.Rejected && !string.IsNullOrEmpty(_loanApplication.Borrower?.Email))
+                    {
+                        var subject = $"Update on your Loan Application: {_loanApplication.ApplicationCode}";
+                        var body = $@"<p>Dear {(_loanApplication.Borrower.CompanyName ?? _loanApplication.Borrower.FirstName)},</p>
+                                      <p>We regret to inform you that your loan application (<strong>{_loanApplication.ApplicationCode}</strong>) has been rejected.</p>
+                                      <p><strong>Reason for rejection:</strong> {_loanApplication.RejectionReason}</p>
+                                      <p>If you have any questions or require further clarification, please contact our support team.</p>
+                                      <br/>
+                                      <p>Sincerely,<br/>The Loan Operations Team</p>";
+                        await _emailService.SendEmailAsync(_loanApplication.Borrower.Email, subject, body);
+                    }
 
                     await dbContext.SaveChangesAsync();
                }

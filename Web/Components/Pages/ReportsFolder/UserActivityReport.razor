@@ -4,7 +4,7 @@
 <MudPaper Class="pa-6 mb-6 rounded-xl" Elevation="0" Style="background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2);">
     <MudGrid>
         <MudItem xs="12" sm="4">
-            <MudDateRangePicker Label="Activity Period" DateRange="ActivityRange" DateRangeChanged="OnActivityRangeChanged" Class="rounded-lg" />
+            <MudDateRangePicker ShowToolbar="false" Label="Activity Period" DateRange="ActivityRange" DateRangeChanged="OnActivityRangeChanged" Class="rounded-lg" />
         </MudItem>
         <MudItem xs="12" sm="4">
             <MudSelect T="string" Value="@ActivityUserSearch" ValueChanged="OnActivityUserSearchChanged" Label="Select Sub-User" Placeholder="Select a user">
@@ -211,3 +211,4 @@
         };
     }
 }
+

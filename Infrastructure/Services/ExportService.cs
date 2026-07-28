@@ -346,7 +346,21 @@ namespace Infrastructure.Services
                 .ToArray();
             
             var sb = new StringBuilder();
-            sb.AppendLine("<html><head><meta charset='utf-8'/><style>table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid black; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body>");
+            sb.AppendLine("<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>");
+            sb.AppendLine("<head><meta charset='utf-8'/>");
+            sb.AppendLine("<style>");
+            sb.AppendLine("<!--");
+            sb.AppendLine("@page Section1 { size: 841.9pt 595.3pt; mso-page-orientation: landscape; margin: 0.5in 0.5in 0.5in 0.5in; mso-header-margin: 0.5in; mso-footer-margin: 0.5in; }");
+            sb.AppendLine("div.Section1 { page: Section1; }");
+            sb.AppendLine("body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; }");
+            sb.AppendLine("h2 { color: #2B579A; text-align: center; margin-bottom: 20px; font-size: 18pt; }");
+            sb.AppendLine("table { border-collapse: collapse; width: 100%; font-size: 10pt; mso-table-layout-alt: fixed; }");
+            sb.AppendLine("th, td { border: 1px solid #e0e0e0; padding: 6px 8px; text-align: left; vertical-align: middle; }");
+            sb.AppendLine("th { background-color: #f0f4f8; color: #102a43; font-weight: bold; border-bottom: 2px solid #2B579A; }");
+            sb.AppendLine("tr:nth-child(even) td { background-color: #f8fafc; }");
+            sb.AppendLine("-->");
+            sb.AppendLine("</style></head><body>");
+            sb.AppendLine("<div class='Section1'>");
             sb.AppendLine($"<h2>{FormatDisplayName(title)}</h2>");
             sb.AppendLine("<table>");
             sb.AppendLine("<tr>");
@@ -372,6 +386,8 @@ namespace Infrastructure.Services
                 sb.AppendLine("</tr>");
             }
 
+            sb.AppendLine("</table>");
+
             if (!string.IsNullOrEmpty(qrCodeUrl))
             {
                 try
@@ -379,13 +395,21 @@ namespace Infrastructure.Services
                     var qrBase64 = _qrCodeService.GenerateQRCodeBase64(qrCodeUrl);
                     if (!string.IsNullOrEmpty(qrBase64))
                     {
-                        sb.AppendLine($"<div style='text-align: left; margin-top: 30px;'><img src='data:image/png;base64,{qrBase64}' width='100' height='100' /><br/><small>Scan to Verify</small></div>");
+                        sb.AppendLine("<br/>");
+                        sb.AppendLine("<table style='width: 100pt; border: none; margin-top: 15px;' cellpadding='0' cellspacing='0'>");
+                        sb.AppendLine("<tr><td style='border: none; text-align: left; padding: 0;'>");
+                        sb.AppendLine($"<img src='data:image/png;base64,{qrBase64}' width='100' height='100' style='width:75.0pt; height:75.0pt;' />");
+                        sb.AppendLine("</td></tr>");
+                        sb.AppendLine("<tr><td style='border: none; text-align: center; padding-top: 5px;'>");
+                        sb.AppendLine("<span style='font-size: 9pt; color: #555; font-weight: bold;'>Scan to Verify</span>");
+                        sb.AppendLine("</td></tr>");
+                        sb.AppendLine("</table>");
                     }
                 }
                 catch { }
             }
 
-            sb.AppendLine("</table></body></html>");
+            sb.AppendLine("</div></body></html>");
 
             return Encoding.UTF8.GetBytes(sb.ToString());
         }
