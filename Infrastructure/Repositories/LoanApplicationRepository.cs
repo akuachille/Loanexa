@@ -86,9 +86,10 @@ namespace Infrastructure.Repositories
             throw new Exception("One or more related entities required for loan application creation were not found.");
         }
 
+        var randomSuffix = new Random().Next(1000, 9999);
         var generatedCode = !string.IsNullOrWhiteSpace(borrower.CompanyName)
-            ? $"LN-{DateTime.Now.Year}-{borrower.CompanyName}"
-            : $"LN-{DateTime.Now.Year}-{borrower.FirstName}-{borrower.LastName}";
+            ? $"LN-{DateTime.Now.Year}-{borrower.CompanyName}-{randomSuffix}"
+            : $"LN-{DateTime.Now.Year}-{borrower.FirstName}-{borrower.LastName}-{randomSuffix}";
         var currentUserName = string.IsNullOrWhiteSpace(_userContext.FullName) ? _userContext.Email : _userContext.FullName;
         
             var _loanApplication = new LoanApplication

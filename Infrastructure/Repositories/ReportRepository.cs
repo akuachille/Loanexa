@@ -320,18 +320,59 @@ namespace Infrastructure.Repositories
             var loans = await dbContext.Disbursements
                 .Include(d => d.LoanApplication).ThenInclude(la => la.Borrower)
                 .Include(d => d.LoanApplication).ThenInclude(la => la.LoanProductSetting).ThenInclude(lps => lps.LoanProduct)
+                .Include(d => d.PaymentModality)
                 .Include(d => d.Payments)
-                .Where(d => d.IsActive && d.EndDate < DateTime.Now && (d.PersonId == currentPersonId.Value || d.LoanApplication.PersonId == currentPersonId.Value))
+                .Where(d => d.IsActive && (d.PersonId == currentPersonId.Value || d.LoanApplication.PersonId == currentPersonId.Value))
                 .ToListAsync();
 
             var overdueList = new List<OverdueReportDTO>();
             foreach (var d in loans)
             {
-                var totalPaid = d.Payments.Where(p => p.IsActive).Sum(p => p.Amount);
-                var balance = d.Amount - totalPaid;
-                if (balance > 0)
+                int totalInstallments = d.TotalInstallments > 0 ? d.TotalInstallments : 1;
+                decimal totalDuePerInstallment = d.Amount / totalInstallments;
+                string mode = (d.PaymentModality?.Mode ?? "monthly").ToLower();
+                decimal totalCollected = d.Payments.Where(p => p.IsActive).Sum(p => p.Amount);
+                decimal runningPaidAmount = totalCollected;
+                decimal balance = Math.Max(0, d.Amount - totalCollected);
+
+                if (balance <= 0.01m)
                 {
-                    var daysPastDue = (DateTime.Now - d.EndDate).Days;
+                     continue;
+                }
+
+                DateTime overdueDate = DateTime.MinValue;
+                decimal overdueAmount = 0;
+                bool isOverdue = false;
+
+                for (int i = 0; i < totalInstallments; i++)
+                {
+                    DateTime dueDate = mode switch
+                    {
+                        "daily" => d.StartDate.AddDays(i),
+                        "weekly" => d.StartDate.AddDays(i * 7),
+                        "monthly" => d.StartDate.AddMonths(i),
+                        _ => d.StartDate.AddMonths(i)
+                    };
+
+                    if (runningPaidAmount >= totalDuePerInstallment)
+                    {
+                        runningPaidAmount -= totalDuePerInstallment;
+                    }
+                    else
+                    {
+                        if (dueDate.Date < DateTime.Now.Date)
+                        {
+                            isOverdue = true;
+                            if (overdueDate == DateTime.MinValue) overdueDate = dueDate;
+                            overdueAmount += (totalDuePerInstallment - runningPaidAmount);
+                        }
+                        runningPaidAmount = 0;
+                    }
+                }
+
+                if (isOverdue)
+                {
+                    var daysPastDue = (DateTime.Now.Date - overdueDate.Date).Days;
                     string risk = daysPastDue > 90 ? "90+" : (daysPastDue > 60 ? "61-90" : (daysPastDue > 30 ? "31-60" : "1-30"));
 
                     overdueList.Add(new OverdueReportDTO
@@ -342,9 +383,9 @@ namespace Infrastructure.Repositories
                         LoanType = d.LoanApplication.LoanProductSetting.LoanProduct.ProductName,
                         PrincipalAmount = d.Amount,
                         OutstandingBalance = balance,
-                        DueDate = d.EndDate,
+                        DueDate = overdueDate,
                         DaysPastDue = daysPastDue,
-                        OverdueAmount = balance,
+                        OverdueAmount = overdueAmount,
                         RiskCategory = risk
                     });
                 }

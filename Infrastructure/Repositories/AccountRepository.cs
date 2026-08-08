@@ -35,8 +35,8 @@ namespace Infrastructure.Repositories
             return await  dbContext.Users
                 .Where(u => u.Id == _userContext.Id)
                 .SelectMany(u => u.Person.Accounts)
-                 .Include(i => i.AccountType)
-                  .ToListAsync();
+                .Include(i => i.AccountType)
+                .ToListAsync();
         }
 
         public async Task<Account> GetAccountByIdAsync(int id)

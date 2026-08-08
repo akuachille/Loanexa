@@ -259,7 +259,11 @@
                 ));
             }
 
-            SearchedDisbursement = matchingDisbursements.FirstOrDefault();
+            SearchedDisbursement = matchingDisbursements
+                .OrderBy(d => d.Amount - _payments.Where(p => p.DisbursementId == d.Id && p.IsActive).Sum(p => p.Amount) <= 0) // Unpaid ones (false) come first
+                .ThenByDescending(d => d.StartDate)
+                .FirstOrDefault();
+
             if (SearchedDisbursement != null)
             {
                 var fullSchedule = GenerateAmortizationSchedule(SearchedDisbursement);
