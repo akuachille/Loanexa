@@ -24,7 +24,7 @@ namespace Infrastructure.Repositories
             await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             // return await dbContext.Accounts
             // .Include(i => i.AccountType)
-            // .ToListAsync();
+            // .OrderByDescending(x => x.Id).ToListAsync();
 
 
             if (_userContext.Id == null)
@@ -36,6 +36,7 @@ namespace Infrastructure.Repositories
                 .Where(u => u.Id == _userContext.Id)
                 .SelectMany(u => u.Person.Accounts)
                 .Include(i => i.AccountType)
+                .OrderByDescending(x => x.Id)
                 .ToListAsync();
         }
 
@@ -99,3 +100,4 @@ namespace Infrastructure.Repositories
     }
     
 }
+

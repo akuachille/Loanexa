@@ -28,32 +28,8 @@ namespace Infrastructure.Services
 
             var appUrl = _configuration["AppUrl"] ?? "http://localhost:5005";
             
-            // Try to find the physical path to the logo to embed it directly
-            var baseDir = System.IO.Directory.GetCurrentDirectory();
-            var possibleLogoPaths = new[] {
-                System.IO.Path.Combine(baseDir, "wwwroot", "Images", "guriza_logo.png"),
-                System.IO.Path.Combine(baseDir, "Web", "wwwroot", "Images", "guriza_logo.png"),
-                System.IO.Path.Combine(baseDir, "..", "Web", "wwwroot", "Images", "guriza_logo.png"),
-                @"c:\Users\KEVINE\Downloads\DigitalLoanPlatform2\DigitalLoanPlatform2\Web\wwwroot\Images\guriza_logo.png"
-            };
-
-            string logoPhysicalPath = null;
-            foreach (var path in possibleLogoPaths)
-            {
-                if (System.IO.File.Exists(path))
-                {
-                    logoPhysicalPath = path;
-                    break;
-                }
-            }
-
-            var logoSrc = $"{appUrl.TrimEnd('/')}/Images/guriza_logo.png"; // Fallback URL
-            if (!string.IsNullOrEmpty(logoPhysicalPath))
-            {
-                // For the local HTML fallback, we use base64 so it displays instantly in the browser
-                var logoBytes = System.IO.File.ReadAllBytes(logoPhysicalPath);
-                logoSrc = "data:image/png;base64," + System.Convert.ToBase64String(logoBytes);
-            }
+            // Use absolute URL for the image to prevent it from showing as an attachment in email clients
+            var logoSrc = $"{appUrl.TrimEnd('/')}/Images/guriza_logo.png";
 
             var formattedHtmlMessage = $@"
 <!DOCTYPE html>
@@ -161,20 +137,6 @@ namespace Infrastructure.Services
             email.Subject = subject;
             
             var builder = new BodyBuilder();
-            
-            // For actual SMTP emails, embed the image as a LinkedResource (CID) for best email client compatibility
-            if (!string.IsNullOrEmpty(logoPhysicalPath))
-            {
-                var image = builder.LinkedResources.Add(logoPhysicalPath);
-                
-                // Use a proper RFC-compliant unique Message-ID for the Content-ID to prevent strict clients (like Gmail) from stripping it
-                image.ContentId = MimeKit.Utils.MimeUtils.GenerateMessageId();
-                image.IsAttachment = false; // Ensure it's treated as an inline image, not a downloadable attachment
-                
-                // Replace the base64 src with the correct cid: reference
-                formattedHtmlMessage = formattedHtmlMessage.Replace(logoSrc, $"cid:{image.ContentId}");
-            }
-            
             builder.HtmlBody = formattedHtmlMessage;
             email.Body = builder.ToMessageBody();
 

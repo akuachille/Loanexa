@@ -30,7 +30,7 @@ namespace Infrastructure.Repositories
             .Include(a => a.GuarantorType)
             .Include(a => a.LoanApplication)
             .Where(a => a.PersonId == _userContext.PersonId)
-            .ToListAsync();
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
         public async Task <Guarantor> GetGuarantorById(int Id)
         {

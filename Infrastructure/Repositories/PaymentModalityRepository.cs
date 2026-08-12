@@ -25,10 +25,8 @@ namespace Infrastructure.Repositories
                 return new List<PaymentModality>();
             }
             using var dbContext = await _contextFactory.CreateDbContextAsync();
-            var settingsPersonId = await _userContext.GetSettingsPersonIdAsync();
             return await dbContext.PaymentModalities
-            .Where(a => a.PersonId == settingsPersonId) 
-            .ToListAsync();
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<PaymentModality?> GetPaymentModalityById(int Id)
@@ -38,10 +36,7 @@ namespace Infrastructure.Repositories
                 return new PaymentModality();
             }
             using var dbContext = await _contextFactory.CreateDbContextAsync();
-            var settingsPersonId = await _userContext.GetSettingsPersonIdAsync();
-            // Changed to FirstOrDefaultAsync to maintain a fully async flow
             return await dbContext.PaymentModalities
-            .Where(a => a.PersonId == settingsPersonId) 
             .FirstOrDefaultAsync(t => t.Id == Id);
         }
 
@@ -57,11 +52,11 @@ namespace Infrastructure.Repositories
             {
                 Mode = paymentModalityDTO.Mode,
                 CreatedBy = "System Manager",   // Uncomment if you have a status field here too
-                PersonId = user.Person.Id
-            };
+                };
 
             await dbContext.PaymentModalities.AddAsync(paymentModality);
             await dbContext.SaveChangesAsync();
         }
     }
 }
+

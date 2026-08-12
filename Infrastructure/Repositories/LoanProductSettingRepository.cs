@@ -21,7 +21,7 @@ namespace Infrastructure.Repositories
         _userContext = userContext;
         }
     
-        public  async Task<List<LoanProductSetting>> GetAllLoanProductSettingsAsync()
+        public async Task<List<LoanProductSetting>> GetAllLoanProductSettingsAsync()
         {
         using var dbContext = await _contextFactory.CreateDbContextAsync();
         if (_userContext.Id == null)
@@ -31,13 +31,11 @@ namespace Infrastructure.Repositories
         var settingsPersonId = await _userContext.GetSettingsPersonIdAsync();
         return await dbContext.LoanProductSettings
             .Include(a => a.LoanProduct)
-            .Where(a => a.PersonId == settingsPersonId)  
-            .ToListAsync();
+            .Where(a => a.PersonId == settingsPersonId) // Filter by tenant's PersonId
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
         public async Task <LoanProductSetting?> GetLoanProductSettingById(int Id)
         {
-            // using var dbContext = await _contextFactory.CreateDbContextAsync();
-            // return  dbContext.LoanProductSettings.FirstOrDefault(t => t.Id == Id);
           using var context = _contextFactory.CreateDbContext();
         if (_userContext.Id == null)
         {
@@ -46,7 +44,7 @@ namespace Infrastructure.Repositories
         var settingsPersonId = await _userContext.GetSettingsPersonIdAsync();
          return await context.LoanProductSettings
         .Include(s => s.LoanProduct)    
-        .Where(a => a.PersonId == settingsPersonId)
+        .Where(s => s.PersonId == settingsPersonId) // Filter by tenant's PersonId
         .FirstOrDefaultAsync(s => s.Id == Id);  
         }
          public async Task CreateLoanProductSetting(CreateLoanProductSettingDTO loanProductSettingDTO)
@@ -126,3 +124,4 @@ namespace Infrastructure.Repositories
     
     
         
+

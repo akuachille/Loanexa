@@ -158,7 +158,7 @@
     {
         try
         {
-            await ProvidedDocumentService.GetProvidedDocumentById(doc.Id); // Verify access
+            await ProvidedDocumentService.DeleteProvidedDocumentAsync(doc.Id);
             Snackbar.Add("Document deleted. Please upload a replacement.", Severity.Info);
             await LoadDocs();
         }

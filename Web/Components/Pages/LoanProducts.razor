@@ -149,7 +149,7 @@
             { x => x.Id, product.Id }
         };
 
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
         await DialogService.ShowAsync<LoanProductDetailDialog>("Loan Product Details", parameters, options);
     }
 

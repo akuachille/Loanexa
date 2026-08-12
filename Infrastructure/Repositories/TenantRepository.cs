@@ -36,14 +36,14 @@ namespace Infrastructure.Repositories
             return await _dbContext.Tenants
                 .Include(t => t.TenantDocuments)
                 .Where(t => t.Status == "Pending")
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<List<Tenant>> GetAllTenantsAsync()
         {
             return await _dbContext.Tenants
                 .Include(t => t.TenantDocuments)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task AddTenantAsync(Tenant tenant)
@@ -59,3 +59,4 @@ namespace Infrastructure.Repositories
         }
     }
 }
+

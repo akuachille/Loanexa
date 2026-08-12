@@ -31,7 +31,7 @@ namespace Infrastructure.Repositories
             .Include(i => i.RequiredDocument)
             .Include(i => i.LoanProduct)
             .Where(i => i.PersonId == settingsPersonId) // Filter by settingsPersonId
-            .ToListAsync();
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<Requirement?> GetRequirementByIdAsync(int id)
@@ -100,3 +100,4 @@ namespace Infrastructure.Repositories
     }
     
 }
+

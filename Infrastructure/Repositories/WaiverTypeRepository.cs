@@ -31,7 +31,7 @@ namespace Infrastructure.Repositories
         {
             try
             {
-                return await _context.WaiverTypes.AsNoTracking().ToListAsync();
+                return await _context.WaiverTypes.AsNoTracking().OrderByDescending(x => x.Id).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -59,7 +59,7 @@ namespace Infrastructure.Repositories
             try
             {
                 return await _context.WaiverTypes.AsNoTracking()
-                    .Where(w => w.LoanProductId == loanProductId).ToListAsync();
+                    .Where(w => w.LoanProductId == loanProductId).OrderByDescending(x => x.Id).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -118,3 +118,4 @@ namespace Infrastructure.Repositories
         }
     }
 }
+

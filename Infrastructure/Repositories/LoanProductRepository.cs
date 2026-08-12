@@ -19,33 +19,29 @@ namespace Infrastructure.Repositories
 
         public async Task<List<LoanProduct>> GetAllLoanProductsAsync()
         {
-            // FIX 1: Create the dbContext instance first
             await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             
-             if (_userContext.Id == null)
+            if (_userContext.Id == null)
             {
                 return new List<LoanProduct>();
             }
             var settingsPersonId = await _userContext.GetSettingsPersonIdAsync();
-            // Use ToListAsync() since the method is async
             return await dbContext.LoanProducts
-             .Where(a => a.PersonId == settingsPersonId)
-            .ToListAsync();
+                .Where(x => x.PersonId == settingsPersonId) // Filter by tenant's PersonId
+                .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<LoanProduct> GetLoanProductByIdAsync(int id)
         {
-            // FIX 2: Create the dbContext instance first
             await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-    if (_userContext.Id == null)
-    {
-        return null;
-    }
+            if (_userContext.Id == null)
+            {
+                return null;
+            }
             var settingsPersonId = await _userContext.GetSettingsPersonIdAsync();
-            // FIX 3: Change 'Id' to 'id' to match the parameter name
             return await dbContext.LoanProducts
-              .Where(a => a.PersonId == settingsPersonId) // Ensure ownership
-              .FirstOrDefaultAsync(a => a.Id == id); 
+                .Where(a => a.PersonId == settingsPersonId) // Filter by tenant's PersonId
+                .FirstOrDefaultAsync(a => a.Id == id);
         }
 
         public async Task<LoanProduct> CreateLoanProductAsync(LoanProductCreateDTO LoanProductDTO)

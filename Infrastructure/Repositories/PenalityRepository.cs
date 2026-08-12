@@ -31,7 +31,7 @@ namespace Infrastructure.Repositories
                 .Include(i => i.Reason)
                 .Where(p => p.IsActive)
                 .OrderByDescending(p => p.Date)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<Penality?> GetPenalityByIdAsync(int id)
@@ -85,6 +85,10 @@ namespace Infrastructure.Repositories
 
                 if (disbursement == null) return;
 
+                // Guard: ensure ReasonId is valid (> 0) to prevent FK 547 error
+                if (penalityDTO.ReasonId <= 0)
+                    throw new Exception("Please select a valid Penalty Reason before applying the penalty.");
+
                 // 2. Fetch dynamic rate from LoanProductSetting
                 decimal rate = disbursement.LoanApplication?.LoanProductSetting?.PenalityRate ?? 0;
                 
@@ -96,7 +100,7 @@ namespace Infrastructure.Repositories
                 {
                     LoanApplicationId = penalityDTO.LoanApplicationId,
                     Amount = calculatedPenaltyFee,
-                    Date = DateTime.Now,
+                    Date = penalityDTO.Date ?? DateTime.Now,
                     ReasonId = penalityDTO.ReasonId,
                     Description = $"{penalityDTO.Description} (Shortfall: {penalityDTO.Amount:N2} | {rate}% Fee: {calculatedPenaltyFee:N2})",
                     IsActive = true,

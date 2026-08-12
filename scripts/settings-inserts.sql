@@ -1,9 +1,9 @@
 -- Initial data for PaymentTypes
-INSERT INTO [PaymentTypes] ([PaymentTypeName], [CreatedAt], [IsActive]) VALUES
-('Cash', GETDATE(), 1),
-('Bank Transfer', GETDATE(), 1),
-('Mobile Money', GETDATE(), 1),
-('Cheque', GETDATE(), 1);
+INSERT INTO [PaymentTypes] ([PaymentTypeName], [CreatedAt], [UpdatedAt], [IsActive]) VALUES
+('Cash', GETDATE(), GETDATE(), 1),
+('Bank Transfer', GETDATE(), GETDATE(), 1),
+('Mobile Money', GETDATE(), GETDATE(), 1),
+('Cheque', GETDATE(), GETDATE(), 1);
 
 -- Initial data for Reasons
 INSERT INTO [Reasons] ([Name], [IsActive]) VALUES
@@ -20,22 +20,22 @@ INSERT INTO [AccountTypes] ([AccountTypeName]) VALUES
 ('Airtel Money');
 
 -- Initial data for BorrowerTypes
-INSERT INTO [BorrowerTypes] ([Type]) VALUES
-('Individual'),
-('Business'),
-('Group');
+INSERT INTO [BorrowerTypes] ([Type], [Status]) VALUES
+('Individual', 'Active'),
+('Business', 'Active'),
+('Group', 'Active');
 
 -- Initial data for GuarantorTypes
-INSERT INTO [GuarantorTypes] ([Name]) VALUES
-('Individual'),
-('Business'),
-('Group');
+INSERT INTO [GuarantorTypes] ([Name], [Status], [CreatedAt]) VALUES
+('Individual', 'Active', GETDATE()),
+('Business', 'Active', GETDATE()),
+('Group', 'Active', GETDATE());
 
 -- Initial data for PaymentModalities
-INSERT INTO [PaymentModalities] ([Mode]) VALUES
-('Daily'),
-('Weekly'),
-('Bi-Weekly'),
-('Monthly'),
-('Quarterly'),
-('Annually');
+INSERT INTO [PaymentModalities] ([Mode], [CreatedAt]) VALUES
+('Daily', GETDATE()),
+('Weekly', GETDATE()),
+('Bi-Weekly', GETDATE()),
+('Monthly', GETDATE()),
+('Quarterly', GETDATE()),
+('Annually', GETDATE());

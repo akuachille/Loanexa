@@ -90,6 +90,8 @@ builder.Services.AddScoped<IAccountTypeService, AccountTypeService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IPersonService, PersonService>();
 builder.Services.AddScoped<IRequirementService, RequirementService>();
+builder.Services.AddScoped<IRequirementVerificationService, Infrastructure.Repositories.RequirementVerificationService>();
+builder.Services.AddScoped<ILoanProductAdditionalRequirementService, Infrastructure.Repositories.LoanProductAdditionalRequirementService>();
 
 builder.Services.AddScoped<IDisbursementService, DisbursementService>();
 builder.Services.AddScoped<IReasonService, ReasonService>();

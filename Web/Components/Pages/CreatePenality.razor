@@ -1,4 +1,4 @@
-﻿@using Application.DTO
+@using Application.DTO
 @using Application.Services.Disbursements
 @using MudBlazor
 @using Domain.Entities
@@ -67,13 +67,37 @@
                 @* 3. MISSED AMOUNT (SHORTFALL) *@
                 <MudItem xs="12" sm="6">
                     <MudNumericField T="decimal" Label="Missed Amount (Shortfall)" 
-                                     Value="Model.Amount"
-                                     ValueChanged="UpdatePenaltyPreview"
+                                     @bind-Value="Model.Amount"
                                      Variant="Variant.Outlined" Margin="Margin.Dense"
-                                     Format="N2" 
-                                    
-                                     Immediate="true" />
+                                     Format="N2"
+                                     Immediate="true"
+                                     OnValueChanged="UpdatePenaltyPreview" />
                 </MudItem>
+
+                @* --- LOAN SUMMARY INFO --- *@
+                @if (_selectedDisbursement != null)
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Style="border-radius:8px;">
+                            <div class="d-flex justify-space-between">
+                                <MudText Typo="Typo.body2">Total Repayable:</MudText>
+                                <MudText Typo="Typo.body2"><b>@_selectedDisbursement.Amount.ToString("N2")</b></MudText>
+                            </div>
+                            <div class="d-flex justify-space-between mt-1">
+                                <MudText Typo="Typo.body2">Total Paid So Far:</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Success"><b>@((_selectedDisbursement.Payments?.Where(p => p.IsActive).Sum(p => p.Amount) ?? 0).ToString("N2"))</b></MudText>
+                            </div>
+                            <div class="d-flex justify-space-between mt-1">
+                                <MudText Typo="Typo.body2">Remaining Balance:</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Error"><b>@((_selectedDisbursement.Amount - (_selectedDisbursement.Payments?.Where(p => p.IsActive).Sum(p => p.Amount) ?? 0)).ToString("N2"))</b></MudText>
+                            </div>
+                            <div class="d-flex justify-space-between mt-1">
+                                <MudText Typo="Typo.body2">Installment Amount:</MudText>
+                                <MudText Typo="Typo.body2"><b>@((_selectedDisbursement.TotalInstallments > 0 ? Math.Round(_selectedDisbursement.Amount / _selectedDisbursement.TotalInstallments, 2) : _selectedDisbursement.Amount).ToString("N2")) / payment</b></MudText>
+                            </div>
+                        </MudAlert>
+                    </MudItem>
+                }
 
                 @* --- CALCULATION PREVIEW --- *@
                 @if (Model.Amount > 0)
@@ -115,7 +139,7 @@
         <MudStack Row="true" Class="px-4 pb-4" Style="width: 100%;">
             <MudButton Variant="Variant.Text" OnClick="Cancel" Class="px-8">Cancel</MudButton>
             <MudButton Variant="Variant.Filled" OnClick="Submit"
-                       Disabled="@(_isProcessing || Model.LoanApplicationId == 0 || Model.Amount <= 0)"
+                       Disabled="@(_isProcessing || Model.LoanApplicationId == 0 || Model.Amount <= 0 || Model.ReasonId == 0)"
                        Color="Color.Error" FullWidth="true"
                        Style="border-radius: 8px; font-weight: 700;">
                 @(_isProcessing ? "PROCESSING..." : $"APPLY {_currentRate}% PENALTY")
@@ -145,9 +169,13 @@
         _reasons = reasonsTask.Result?.ToList() ?? new();
     }
 
+    private Disbursement? _selectedDisbursement;
+
     private async Task OnLoanApplicationChanged(int loanId)
     {
         Model.LoanApplicationId = loanId;
+        _selectedDisbursement = null;
+
         if (loanId > 0)
         {
             var loan = _loanApplications.FirstOrDefault(l => l.Id == loanId);
@@ -161,8 +189,35 @@
             }
             else
             {
+                _selectedDisbursement = disbursement;
+
+                // Auto-select the first reason if not yet set
+                if (Model.ReasonId == 0 && _reasons.Any())
+                {
+                    Model.ReasonId = _reasons.First().Id;
+                }
+
+                // Auto-calculate missed amount: installment amount minus total paid so far
+                int installments = disbursement.TotalInstallments > 0 ? disbursement.TotalInstallments : 1;
+                decimal installmentAmount = Math.Round(disbursement.Amount / installments, 2);
+                decimal totalPaid = disbursement.Payments?
+                    .Where(p => p.IsActive)
+                    .Sum(p => p.Amount) ?? 0;
+                decimal totalExpectedPaid = disbursement.Amount; // full outstanding
+                decimal remainingBalance = disbursement.Amount - totalPaid;
+
+                // Shortfall = one installment amount minus any partial payment already received
+                decimal autoMissedAmount = Math.Max(0, installmentAmount);
+                // If there's already been some payment, show the actual remaining balance as shortfall
+                if (totalPaid > 0 && remainingBalance < installmentAmount)
+                {
+                    autoMissedAmount = remainingBalance;
+                }
+
+                Model.Amount = autoMissedAmount;
                 Model.Description = $"Manual {_currentRate}% Late Penalty adjustment.";
                 UpdatePenaltyPreview(Model.Amount);
+                StateHasChanged();
             }
         }
     }
@@ -172,6 +227,12 @@
         Model.Amount = shortfall;
         // Use dynamic rate from settings
         _calculatedPenaltyPreview = shortfall * (_currentRate / 100m);
+    }
+
+    // Called by OnValueChanged when using @bind-Value
+    private void UpdatePenaltyPreview()
+    {
+        _calculatedPenaltyPreview = Model.Amount * (_currentRate / 100m);
     }
 
     private void Cancel() => MudDialog.Cancel();

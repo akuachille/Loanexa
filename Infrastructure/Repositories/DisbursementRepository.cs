@@ -41,7 +41,7 @@ namespace Infrastructure.Repositories
                 .Include(i => i.Payments)
                 .Where(d => d.IsActive)
                 .OrderByDescending(d => d.CreatedAt)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<List<Disbursement>> GetDisbursementsWithBalanceAsync()
@@ -58,7 +58,7 @@ namespace Infrastructure.Repositories
                 .Where(a => allowedPersonIds.Contains(a.PersonId)) 
                 .Include(i => i.Payments)
                 .Where(d => d.IsActive)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             return data.Select(d =>
             {
@@ -431,7 +431,7 @@ namespace Infrastructure.Repositories
 
     <div style=""background-color: #1B2559; padding: 15px 20px; text-align: left; font-size: 12px; color: #ffffff; opacity: 0.9;"">
         <p style=""margin-bottom: 10px;"">Scan to Verify</p>
-        <img src=""data:image/png;base64,{_qrCodeService.GenerateQRCodeBase64($"https://app.guriza.com/verify?loan={appCode}")}"" width=""80"" height=""80"" style=""border-radius: 5px;""/>
+        <img src=""https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={Uri.EscapeDataString($"https://app.guriza.com/verify?loan={appCode}")}"" width=""80"" height=""80"" style=""border-radius: 5px;""/>
         <br/><br/>
         &copy; {DateTime.UtcNow.Year} Guriza. All rights reserved.
     </div>
@@ -446,3 +446,4 @@ namespace Infrastructure.Repositories
         }
     }
 }
+

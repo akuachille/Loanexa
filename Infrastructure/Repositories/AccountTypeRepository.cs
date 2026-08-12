@@ -27,8 +27,8 @@ namespace Infrastructure.Repositories
             } 
             await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             return await dbContext.AccountTypes
-            .Where(a => a.PersonId == _userContext.PersonId) 
-            .ToListAsync();
+             
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<AccountType?> GetAccountTypeByIdAsync(int id)
@@ -51,8 +51,7 @@ namespace Infrastructure.Repositories
 
             AccountType AccountType = new()
             {
-                AccountTypeName = AccountTypeDTO.AccountTypeName,
-                PersonId = user.Person.Id
+                AccountTypeName = AccountTypeDTO.AccountTypeName
             };
             dbContext.AccountTypes.Add(AccountType);
             await dbContext.SaveChangesAsync();
@@ -63,3 +62,5 @@ namespace Infrastructure.Repositories
     }
     
 }
+
+

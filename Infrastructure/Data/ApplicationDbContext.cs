@@ -48,6 +48,8 @@ namespace Infrastructure.Data
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<Tenant> Tenants { get; set; }
         public DbSet<TenantDocument> TenantDocuments { get; set; }
+        public DbSet<LoanProductAdditionalRequirement> LoanProductAdditionalRequirements { get; set; }
+        public DbSet<ApplicationRequirementVerification> ApplicationRequirementVerifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -205,6 +207,24 @@ namespace Infrastructure.Data
                 .WithMany(t => t.TenantDocuments)
                 .HasForeignKey(td => td.TenantId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<LoanProductAdditionalRequirement>()
+                .HasOne(r => r.Person)
+                .WithMany()
+                .HasForeignKey(r => r.PersonId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<ApplicationRequirementVerification>()
+                .HasOne(v => v.Person)
+                .WithMany()
+                .HasForeignKey(v => v.PersonId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<ApplicationRequirementVerification>()
+                .HasOne(v => v.LoanApplication)
+                .WithMany()
+                .HasForeignKey(v => v.LoanApplicationId)
+                .OnDelete(DeleteBehavior.NoAction);
 
     // Disable cascade delete between Borrower and ProcessFeeDeposits
        

@@ -25,8 +25,8 @@ namespace Infrastructure.Repositories
             }
             using var context = _contextFactory.CreateDbContext();
             return await context.PaymentTypes
-            .Where(a => a.PersonId == _userContext.PersonId)
-            .ToListAsync();
+            
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<PaymentType?> GetPaymentTypeByIdAsync(int id)
@@ -37,7 +37,7 @@ namespace Infrastructure.Repositories
             }
             using var context = _contextFactory.CreateDbContext();
             return await context.PaymentTypes
-            .Where(a => a.PersonId == _userContext.PersonId) 
+             
             .FirstOrDefaultAsync(t => t.Id == id);
         }
 
@@ -62,8 +62,7 @@ namespace Infrastructure.Repositories
             {
                 PaymentTypeName = paymentTypeDTO.PaymentTypeName,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                PersonId = user.Person.Id
+                CreatedAt = DateTime.UtcNow
             };
 
             context.PaymentTypes.Add(paymentType);
@@ -71,3 +70,4 @@ namespace Infrastructure.Repositories
         }
     }
 }
+

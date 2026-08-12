@@ -25,8 +25,8 @@ namespace Infrastructure.Repositories
             }       
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.GuarantorTypes
-            .Where(a => a.PersonId == _userContext.PersonId) 
-            .ToListAsync();
+             
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<GuarantorType?> GetGuarantorTypeById(int id)
@@ -54,8 +54,7 @@ namespace Infrastructure.Repositories
             {
                 Name = guarantorTypeDTO.Name,                   
                 Status = "Active",
-                UpdatedBy = "System Manager",             
-                PersonId = user.Person.Id
+                UpdatedBy = "System Manager"
             };
 
             context.GuarantorTypes.Add(guarantorType);
@@ -63,3 +62,4 @@ namespace Infrastructure.Repositories
         }
     }
 }
+

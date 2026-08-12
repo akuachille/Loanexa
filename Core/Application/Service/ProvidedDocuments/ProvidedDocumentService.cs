@@ -26,5 +26,9 @@ namespace  Application.Services.ProvidedDocuments
           return await _providedDocument.CreateProvidedDocument(providedDocumentDTO);
         }
       
+        public async Task DeleteProvidedDocumentAsync(int id)
+        {
+            await _providedDocument.DeleteProvidedDocumentAsync(id);
+        }
     }
 }

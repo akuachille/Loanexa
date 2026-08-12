@@ -414,6 +414,34 @@
                     FontSize = "10px"
                 }
             }
+        },
+        Yaxis = new List<YAxis>
+        {
+            new YAxis
+            {
+                ForceNiceScale = true,
+                Min = 0,
+                Labels = new YAxisLabels
+                {
+                    Formatter = @"function(val) { return Math.round(val); }"
+                }
+            }
+        },
+        Stroke = new Stroke
+        {
+            Curve = Curve.Smooth,
+            Width = new List<int> { 2 }
+        },
+        Fill = new Fill
+        {
+            Type = new List<FillType> { FillType.Gradient },
+            Gradient = new FillGradient
+            {
+                ShadeIntensity = 1,
+                OpacityFrom = 0.4,
+                OpacityTo = 0.0,
+                Stops = new List<double> { 0, 100 }
+            }
         }
     };
 

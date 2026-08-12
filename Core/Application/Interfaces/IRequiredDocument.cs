@@ -9,7 +9,7 @@ namespace Application.Interfaces
     {
         Task<List<RequiredDocument>> GetAllRequiredDocumentsAsync();
         Task<RequiredDocument?> GetRequiredDocumentByIdAsync(int id);
-        Task CreateRequiredDocumentAsync(RequiredDocumentCreateDTO requiredDocumentCreateDTO);
+        Task<int> CreateRequiredDocumentAsync(RequiredDocumentCreateDTO requiredDocumentCreateDTO);
         // Task UpdateAccountAsync(int id, AccountUpdateDTO accountUpdateDTO);
     }
 }

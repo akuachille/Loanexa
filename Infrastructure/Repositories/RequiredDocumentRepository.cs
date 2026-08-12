@@ -29,7 +29,7 @@ namespace Infrastructure.Repositories
             var settingsPersonId = await _userContext.GetSettingsPersonIdAsync();
             return await dbContext.RequiredDocuments
             .Where(a => a.PersonId == settingsPersonId)
-            .ToListAsync();
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<RequiredDocument?> GetRequiredDocumentByIdAsync(int id)
@@ -45,7 +45,7 @@ namespace Infrastructure.Repositories
             .FirstOrDefaultAsync(c => c.Id == id);
         }
 
-        public async Task CreateRequiredDocumentAsync(RequiredDocumentCreateDTO RequiredDocumentDTO)
+        public async Task<int> CreateRequiredDocumentAsync(RequiredDocumentCreateDTO RequiredDocumentDTO)
         {
             await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
              if (_userContext.Id == null)
@@ -77,6 +77,7 @@ namespace Infrastructure.Repositories
             };
             dbContext.RequiredDocuments.Add(RequiredDocument);
             await dbContext.SaveChangesAsync();
+            return RequiredDocument.Id;
         }
     
 
@@ -84,3 +85,4 @@ namespace Infrastructure.Repositories
     }
     
 }
+

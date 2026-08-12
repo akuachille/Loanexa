@@ -86,6 +86,9 @@
                 {
                     <MudText Color="Color.Primary" Typo="Typo.subtitle2">@_selectedItems.Count Selected</MudText>
                     <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" OnClick="@(() => OpenDetailDialog(_selectedItems.First().Id))" />
+                    <AuthorizeView Roles="Tenant, Manager">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"  OnClick="@(() => OpenEditDialog(_selectedItems.First().Id))" />
+                    </AuthorizeView>
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => ConfirmDeleteApplication(_selectedItems.First()))" />
                     <MudDivider Vertical="true" FlexItem="true" Class="mx-2" />
                 }
@@ -269,6 +272,20 @@
     private void OpenDetailDialog(int id)
     {
         NavigationManager.NavigateTo($"/loan-details/{id}");
+    }
+
+    private async Task OpenEditDialog(int id)
+    {
+        var parameters = new DialogParameters<EditApplicationDialog> { { x => x.Id, id } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+        var dialog = await DialogService.ShowAsync<EditApplicationDialog>("Edit Application", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+             await LoadLoanApplication();
+        }
     }
 
 

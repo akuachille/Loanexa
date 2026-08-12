@@ -11,7 +11,6 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.EntityFrameworkCore.Metadata.Internal
 @using Microsoft.AspNetCore.Authorization
-
 @inject NavigationManager Navigation
 @inject IGuarantorService GuarantorService
 @inject ILoanApplicationService LoanApplicationService
@@ -86,7 +85,7 @@
                     </MudSelect>
                 </MudItem>
 
-                @* â”€â”€ Individual fields â”€â”€ *@
+                
                 @if (!isOrganization)
                 {
                     <MudItem xs="6">
@@ -98,9 +97,9 @@
                 }
                 else
                 {
-                    @* â”€â”€ Business fields â”€â”€ *@
+                   
                     <MudItem xs="12">
-                        <MudTextField Label="Company Name"
+                        <MudTextField Label="Guarantor Name "
                                       Variant="Variant.Outlined"
                                       Margin="Margin.Dense"
                                       @bind-Value="Model.CompanyName"
@@ -134,8 +133,8 @@
 
                 @if (!isOrganization)
                 {
-                    @* nothing extra for individual *@
-                }
+                   
+             }
                 else
                 {
                     <MudItem xs="6">

@@ -2,6 +2,7 @@
 @using Domain.Entities
 @using MudBlazor
 @inject IRequirementService RequirementService
+@inject ILoanProductAdditionalRequirementService AdditionalReqService
 @inject IDialogService DialogService
 
 <MudDialog>
@@ -14,19 +15,12 @@
     <DialogContent>
         <MudContainer Style="max-height: 600px; overflow-y: auto" Class="pa-0">
             <MudGrid>
-                <MudItem xs="12">
+                <MudItem xs="12" sm="6">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Product Name</MudText>
                     <MudText Typo="Typo.body1" Style="font-weight: 700;">@Product.ProductName</MudText>
                 </MudItem>
 
-                <MudItem xs="6">
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Interest Rate</MudText>
-                    @* <MudText Typo="Typo.body1" Color="Color.Primary" Style="font-weight: 700;">
-                        @Product.InterestRate.ToString("0.00") %
-                    </MudText> *@
-                </MudItem>
-
-                <MudItem xs="6">
+                <MudItem xs="12" sm="6">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">Product ID</MudText>
                     <MudText Typo="Typo.body1"># @Product.Id</MudText>
                 </MudItem>
@@ -41,26 +35,51 @@
 
                 <MudItem xs="12">
                     <MudCard Elevation="0" Style="background-color: var(--mud-palette-background-grey); border-radius: 12px;">
-                        <MudCardHeader>
+                        <MudCardHeader Class="pb-2">
                             <CardHeaderContent>
-                                <MudText Typo="Typo.subtitle2" Style="font-weight: 800;">REQUIRED DOCUMENTS</MudText>
+                                <div class="d-flex justify-space-between align-center">
+                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 800;">REQUIRED DOCUMENTS & REQUIREMENTS</MudText>
+                                    <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenRequirementDialog">Add Requirements</MudButton>
+                                </div>
                             </CardHeaderContent>
                         </MudCardHeader>
-                       <MudList T="string" Clickable="true" Dense="true">
-               @foreach (var req in Requirements)
-            {
-            <MudListItem>
-                <MudButton Variant="Variant.Text" 
-                        Color="Color.Primary" 
-                        StartIcon="@Icons.Material.Filled.Description"
-                        OnClick="@(() => HandleDocumentClick(req.RequiredDocument?.DocumentName))"
-                        Style="text-transform:none; justify-content: flex-start;"
-                        FullWidth="true">
-                    @(req.RequiredDocument?.DocumentName ?? "Unnamed Document")
-                </MudButton>
-            </MudListItem>
-        }
-          </MudList>
+                        <MudList T="string" Clickable="true" Dense="true">
+                            @if (Requirements.Count == 0 && AdditionalRequirements.Count == 0)
+                            {
+                                <MudListItem>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="px-4 pb-2">No requirements linked.</MudText>
+                                </MudListItem>
+                            }
+                            else
+                            {
+                                @foreach (var req in Requirements)
+                                {
+                                    <MudListItem>
+                                        <MudButton Variant="Variant.Text" 
+                                                Color="Color.Primary" 
+                                                StartIcon="@Icons.Material.Filled.Folder"
+                                                OnClick="@(() => HandleDocumentClick(req.RequiredDocument?.DocumentName))"
+                                                Style="text-transform:none; justify-content: flex-start;"
+                                                FullWidth="true">
+                                            @(req.RequiredDocument?.DocumentName ?? "Unnamed Document") 
+                                            <span class="ml-2 mud-text-secondary">(@req.RequiredDocument?.DocumentType)</span>
+                                        </MudButton>
+                                    </MudListItem>
+                                }
+                                @foreach (var req in AdditionalRequirements)
+                                {
+                                    <MudListItem>
+                                        <MudButton Variant="Variant.Text" 
+                                                Color="Color.Primary" 
+                                                StartIcon="@Icons.Material.Filled.List"
+                                                Style="text-transform:none; justify-content: flex-start;"
+                                                FullWidth="true">
+                                            @req.RequirementText
+                                        </MudButton>
+                                    </MudListItem>
+                                }
+                            }
+                        </MudList>
                     </MudCard>
                 </MudItem>
             </MudGrid>
@@ -74,19 +93,47 @@
 @code {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
 
-    // FIX: Added the Id parameter to match the incoming property from the Dialog call
     [Parameter] public int Id { get; set; }
-
     [Parameter] public LoanProduct Product { get; set; } = new();
     [Parameter] public List<Requirement> Requirements { get; set; } = new();
+    private List<LoanProductAdditionalRequirement> AdditionalRequirements { get; set; } = new();
 
-private void HandleDocumentClick(string? documentName)
-{
-    if (!string.IsNullOrEmpty(documentName))
+    protected override async Task OnInitializedAsync()
     {
-        // Example action: You could navigate to a URL or show a snackbar
-        Console.WriteLine($"Selected document: {documentName}");
+        await LoadRequirements();
     }
-}
+
+    private async Task LoadRequirements()
+    {
+        var allRequirements = await RequirementService.GetAllRequirementsAsync();
+        Requirements = allRequirements.Where(r => r.LoanProductId == Product.Id).ToList();
+
+        AdditionalRequirements = await AdditionalReqService.GetAdditionalRequirementsForProductAsync(Product.Id);
+    }
+
+    private void HandleDocumentClick(string? documentName)
+    {
+        if (!string.IsNullOrEmpty(documentName))
+        {
+            Console.WriteLine($"Selected document: {documentName}");
+        }
+    }
+
+    private async Task OpenRequirementDialog()
+    {
+        var parameters = new DialogParameters 
+        { 
+            { "LoanProductId", Product.Id },
+            { "ProductName", Product.ProductName }
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<LoanProductRequirementDialog>("Add Requirements", parameters, options);
+        var result = await dialog.Result;
+        
+        await LoadRequirements();
+        StateHasChanged();
+    }
+
     private void Close() => MudDialog.Close();
 }

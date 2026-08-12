@@ -316,7 +316,7 @@ namespace Infrastructure.Repositories
                 .Include(i => i.Account)
                 .Include(i => i.PaymentType)
                 .OrderByDescending(p => p.PaymentDate)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<Payment?> GetPaymentByIdAsync(int id)
@@ -335,3 +335,4 @@ namespace Infrastructure.Repositories
         }
     }
 }
+

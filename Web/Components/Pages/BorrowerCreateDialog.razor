@@ -14,7 +14,7 @@
 @inject NavigationManager Navigation
 @inject IBorrowerService BorrowerService
 @inject IBorrowerTypeService BorrowerTypeService
-@inject ILocationService LocationService
+@inject ILocationService LocationService 
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
@@ -22,8 +22,6 @@
 <MudDialog Style="overflow:hidden;" >
 
     <DialogContent>
-
-        <!-- â•â•â•â•â•â•â•â•â•â• HEADER BANNER â•â•â•â•â•â•â•â•â•â• -->
         <MudPaper Elevation="0"
                   Style="background: linear-gradient(135deg, #4318FF );
                          padding:14px 18px; margin-bottom:16px;">
@@ -42,18 +40,10 @@
                 </MudStack>
             </MudStack>
         </MudPaper>
-        <!-- â•â•â•â•â•â•â•â•â•â• FORM â•â•â•â•â•â•â•â•â•â• -->
-        <EditForm Model="Model" OnValidSubmit="onValidSubmit" FormName="CreateBorrowerForm">
+           <EditForm Model="Model" OnValidSubmit="onValidSubmit" FormName="CreateBorrowerForm">
             <DataAnnotationsValidator />
             <ValidationSummary />
-            @* <MudStack Spacing="2"> *@
-
-                <!-- Section -->
-                @* <MudText Typo="Typo.caption"
-                         Style="color:#9E9E9E; font-weight:600; letter-spacing:.08em;
-                                text-transform:uppercase;">
-                    Account Type
-                </MudText> *@
+           
                 <MudGrid Spacing="1" Class="align-items-center">
                     <MudItem xs="12">
                         <MudSelect T="int"
@@ -98,7 +88,7 @@
                 else
                 {
                     <MudItem  xs="12">
-                    <MudTextField Label="Company Name"
+                    <MudTextField Label="Business Name"
                                   Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
                                   @bind-Value="Model.CompanyName"
@@ -181,20 +171,23 @@
                  
                   @if (!isOrganization && Model.Maritalstatus == Domain.ValueObjects.Maritalstatus.Married)
                   {
-                      <MudItem xs="6">
-                          <MudTextField Label="Spouse ID Number"
-                                        Variant="Variant.Outlined"
-                                        Margin="Margin.Dense"
-                                        @bind-Value="Model.SpouceIdNumber"
-                                        For="@(() => Model.SpouceIdNumber)" />
-                      </MudItem>
-                      <MudItem xs="6">
+                     <MudItem xs="6">
                           <MudTextField Label="Spouse Name"
                                         Variant="Variant.Outlined"
                                         Margin="Margin.Dense"
                                         @bind-Value="Model.SpouceName"
                                         For="@(() => Model.SpouceName)" />
                       </MudItem>
+                      <MudItem xs="6">
+                          <MudTextField Label="Spouse ID Number"
+                                        Variant="Variant.Outlined"
+                                        Margin="Margin.Dense"
+                                         MaxLength="16"
+                                        Counter="16"
+                                        @bind-Value="Model.SpouceIdNumber"
+                                        For="@(() => Model.SpouceIdNumber)" />
+                      </MudItem>
+                     
                   }
 
                   @if (!isOrganization)

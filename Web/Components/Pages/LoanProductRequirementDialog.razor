@@ -6,14 +6,18 @@
 
 @inject IRequirement RequirementService
 @inject IRequiredDocument RequiredDocumentService
+@inject ILoanProductAdditionalRequirementService AdditionalReqService
+@inject IUserContext UserContext
 @inject ISnackbar Snackbar
 
 <MudDialog>
     <TitleContent>
-        <MudButton OnClick="GoBack" Variant="Variant.Text" Color="Color.Primary">Back to Product</MudButton>
         <div class="d-flex align-center">
-            <MudIcon Icon="@Icons.Material.Filled.ListAlt" Class="mr-3" Color="Color.Primary" />
-            <MudText Typo="Typo.h6">Product Requirements: @ProductName</MudText>
+            <MudButton OnClick="GoBack" Variant="Variant.Text" Color="Color.Primary" Class="mr-4">
+                <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="mr-1"/> Back
+            </MudButton>
+            <MudIcon Icon="@Icons.Material.Filled.ListAlt" Class="mr-2" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@ProductName - Requirements</MudText>
         </div>
     </TitleContent>
     <DialogContent>
@@ -24,35 +28,32 @@
         }
 
         <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
-            
-            @* --- TAB 1: ADD DOCUMENT TO REQUIREMENT --- *@
-            <MudTabPanel Text="Add Requirement" Icon="@Icons.Material.Filled.AddLink">
-                <EditForm Model="@newRequirement" OnValidSubmit="HandleSaveRequirement">
-                    <DataAnnotationsValidator />
-                    <MudGrid>
-                        <MudItem xs="12" md="8">
-                            <MudSelect T="int" Label="Select Document" @bind-Value="newRequirement.RequiredDocumentId" 
-                                       Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" 
-                                      >
-                                <MudSelectItem Value="0">-- Select Existing Document --</MudSelectItem>
-                                @foreach (var doc in _allAvailableDocuments)
-                                {
-                                    <MudSelectItem Value="@doc.Id">@doc.DocumentName (@doc.DocumentType)</MudSelectItem>
-                                }
-                            </MudSelect>
-                        </MudItem>
-                        <MudItem xs="12" md="4" Class="d-flex align-end">
-                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" 
-                                       Color="Color.Primary" FullWidth="true" Style="height:56px">
-                                Link Document
-                            </MudButton>
-                        </MudItem>
-                    </MudGrid>
-                </EditForm>
+            <MudTabPanel Text="Required Documents" Icon="@Icons.Material.Filled.Folder">
+                <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                    <EditForm Model="@newDocument" OnValidSubmit="HandleSaveAndLinkDocument">
+                        <DataAnnotationsValidator />
+                        <MudGrid>
+                            <MudItem xs="12" md="5">
+                                <MudTextField Label="Document Name" @bind-Value="newDocument.DocumentName" 
+                                              Variant="Variant.Outlined" Placeholder="e.g., National ID" Required="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudTextField Label="Document Type" @bind-Value="newDocument.DocumentType" 
+                                              Variant="Variant.Outlined" Placeholder="e.g., PDF/Image" Required="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="3" Class="d-flex align-end">
+                                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" 
+                                           Color="Color.Primary" FullWidth="true" Style="height:56px" StartIcon="@Icons.Material.Filled.Add">
+                                    Add Document
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                    </EditForm>
+                </MudPaper>
 
-                <MudTable Items="@_currentProductRequirements" Hover="true" Dense="true" Class="mt-6" Elevation="0">
+                <MudTable Items="@_currentProductRequirements" Hover="true" Dense="true" Elevation="1">
                     <ToolBarContent>
-                        <MudText Typo="Typo.subtitle1">Linked Documents</MudText>
+                        <MudText Typo="Typo.h6">Linked Documents</MudText>
                     </ToolBarContent>
                     <HeaderContent>
                         <MudTh>Document Name</MudTh>
@@ -68,30 +69,34 @@
                     </RowTemplate>
                 </MudTable>
             </MudTabPanel>
+            
+            <MudTabPanel Text="Other Requirements" Icon="@Icons.Material.Filled.List">
+                <MudPaper Elevation="0" Class="pa-4 mb-4" Style="background-color: var(--mud-palette-background-grey);">
+                    <div class="d-flex align-center gap-2">
+                        <MudTextField Label="Requirement Text" @bind-Value="newRequirementText" 
+                                      Variant="Variant.Outlined" Placeholder="e.g., Age > 18" Required="true" Style="flex-grow:1;" />
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Style="height:56px; margin-top: 4px;" StartIcon="@Icons.Material.Filled.Add" OnClick="AddTextRequirement">
+                            Add Requirement
+                        </MudButton>
+                    </div>
+                </MudPaper>
 
-            @* --- TAB 2: CREATE NEW DOCUMENT TYPE --- *@
-            <MudTabPanel Text="New Document Type" Icon="@Icons.Material.Filled.NoteAdd">
-                <EditForm Model="@newDocument" OnValidSubmit="HandleSaveNewDocument">
-                    <DataAnnotationsValidator />
-                    <MudGrid>
-                        <MudItem xs="12" md="6">
-                            <MudTextField Label="Document Name" @bind-Value="newDocument.DocumentName" 
-                                          Variant="Variant.Outlined" Placeholder="e.g., National ID" />
-                        </MudItem>
-                        <MudItem xs="12" md="6">
-                            <MudTextField Label="Document Type" @bind-Value="newDocument.DocumentType" 
-                                          Variant="Variant.Outlined" Placeholder="e.g., PDF/Image" />
-                        </MudItem>
-                        <MudItem xs="12" Class="d-flex justify-end">
-                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" 
-                                       Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save">
-                                Save New Document Type
-                            </MudButton>
-                        </MudItem>
-                    </MudGrid>
-                </EditForm>
+                <MudTable Items="@_additionalRequirements" Hover="true" Dense="true" Elevation="1">
+                    <ToolBarContent>
+                        <MudText Typo="Typo.h6">Additional Requirements</MudText>
+                    </ToolBarContent>
+                    <HeaderContent>
+                        <MudTh>Requirement Details</MudTh>
+                        <MudTh Style="text-align:right">Action</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Details">@context.RequirementText</MudTd>
+                        <MudTd Style="text-align:right">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteTextRequirement(context.Id))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
             </MudTabPanel>
-
         </MudTabs>
     </DialogContent>
     <DialogActions>
@@ -108,13 +113,13 @@
     private string ErrorMessage = "";
     private RequirementCreateDTO newRequirement = new();
     private RequiredDocumentCreateDTO newDocument = new();
+    private string newRequirementText = "";
 
-    private List<RequiredDocument> _allAvailableDocuments = new();
     private List<Requirement> _currentProductRequirements = new();
+    private List<LoanProductAdditionalRequirement> _additionalRequirements = new();
 
     protected override async Task OnInitializedAsync()
     {
-        // Initialize the DTO with the passed Product ID
         newRequirement.LoanProductId = LoanProductId;
         await LoadData();
     }
@@ -122,51 +127,71 @@
     private async Task LoadData()
     {
         ErrorMessage = "";
-        _allAvailableDocuments = await RequiredDocumentService.GetAllRequiredDocumentsAsync();
         
-        // Fetch and filter requirements for THIS product only
         var allReqs = await RequirementService.GetAllRequirementsAsync();
         _currentProductRequirements = allReqs
             .Where(x => x.LoanProductId == LoanProductId)
             .ToList();
+            
+        _additionalRequirements = await AdditionalReqService.GetAdditionalRequirementsForProductAsync(LoanProductId);
     }
 
-    private async Task HandleSaveRequirement()
+    private async Task HandleSaveAndLinkDocument()
     {
-        if (newRequirement.RequiredDocumentId == 0) 
-        {
-            ErrorMessage = "Please select a document to link.";
-            return;
-        }
-
         try
         {
+            int newDocId = await RequiredDocumentService.CreateRequiredDocumentAsync(newDocument);
+            
+            newRequirement.RequiredDocumentId = newDocId;
             await RequirementService.CreateRequirementAsync(newRequirement);
-            Snackbar.Add("Document linked successfully", Severity.Success);
+
+            Snackbar.Add("Document added and linked successfully", Severity.Success);
             
             await LoadData();
             StateHasChanged();
             
-            // Reset DTO but keep the LoanProductId for the next addition
+            newDocument = new RequiredDocumentCreateDTO();
             newRequirement = new RequirementCreateDTO { LoanProductId = LoanProductId };
         }
         catch (Exception ex) { ErrorMessage = "Error linking document: " + ex.Message; }
     }
+    
+    private async Task AddTextRequirement()
+    {
+        if (string.IsNullOrWhiteSpace(newRequirementText)) return;
+        
+        try
+        {
+            var req = new LoanProductAdditionalRequirement
+            {
+                LoanProductId = LoanProductId,
+                RequirementText = newRequirementText,
+                PersonId = UserContext.PersonId ?? 0
+            };
+            
+            await AdditionalReqService.AddAdditionalRequirementAsync(req);
+            Snackbar.Add("Requirement added successfully", Severity.Success);
+            
+            newRequirementText = "";
+            await LoadData();
+            StateHasChanged();
+        }
+        catch (Exception ex) { ErrorMessage = "Error adding requirement: " + ex.Message; }
+    }
 
-    private async Task HandleSaveNewDocument()
+    private async Task DeleteTextRequirement(int id)
     {
         try
         {
-            await RequiredDocumentService.CreateRequiredDocumentAsync(newDocument);
-            Snackbar.Add("New document type created and available in list", Severity.Info);
-            
-            await LoadData(); // Refreshes the dropdown in Tab 1
+            await AdditionalReqService.DeleteAdditionalRequirementAsync(id);
+            Snackbar.Add("Requirement deleted", Severity.Success);
+            await LoadData();
             StateHasChanged();
-            newDocument = new RequiredDocumentCreateDTO();
         }
-        catch (Exception ex) { ErrorMessage = "Error creating document type: " + ex.Message; }
+        catch (Exception ex) { ErrorMessage = "Error deleting requirement: " + ex.Message; }
     }
 
     void Close() => MudDialog.Close();
     void GoBack() => MudDialog.Cancel();
 }
+

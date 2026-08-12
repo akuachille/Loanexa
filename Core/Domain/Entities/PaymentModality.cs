@@ -6,7 +6,6 @@ namespace Domain.Entities
         public string? Mode {get;set;}
         public DateTime CreatedAt {get;set;}
         public string? CreatedBy {get;set;}
-        public Person Person {get;set;}
-        public int PersonId {get;set;}
+
     }
 }

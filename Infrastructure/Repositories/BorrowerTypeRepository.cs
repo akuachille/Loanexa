@@ -26,8 +26,8 @@ namespace Infrastructure.Repositories
             }
             using var dbContext = await _contextFactory.CreateDbContextAsync();
             return await dbContext.BorrowerTypes
-            .Where(a => a.PersonId == _userContext.PersonId) 
-            .ToListAsync();
+             
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<BorrowerType?> GetBorrowerTypeById(int Id)
@@ -52,8 +52,7 @@ namespace Infrastructure.Repositories
             var borrowerType = new BorrowerType
             {
                 Type = borrowerTypeDTO.Type,
-                Status = "Active",
-                PersonId = user.Person.Id
+                Status = "Active"
             };
             await dbContext.BorrowerTypes.AddAsync(borrowerType);
             await dbContext.SaveChangesAsync();
@@ -71,3 +70,4 @@ namespace Infrastructure.Repositories
         }
     }
 }
+

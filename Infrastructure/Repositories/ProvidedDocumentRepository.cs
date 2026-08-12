@@ -64,7 +64,7 @@ namespace Infrastructure.Repositories
                    CreatedAt = a.CreatedAt,
                    CreatedBy = a.CreatedBy
                })
-               .ToListAsync(); 
+               .OrderByDescending(x => x.Id).ToListAsync(); 
         }
         public async Task <ProvidedDocument> GetProvidedDocumentById(int Id)
         {

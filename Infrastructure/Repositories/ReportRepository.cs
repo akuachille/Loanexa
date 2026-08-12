@@ -37,7 +37,7 @@ namespace Infrastructure.Repositories
                 .Where(d => d.IsActive &&
                     (d.PersonId == currentPersonId.Value ||
                      d.LoanApplication.PersonId == currentPersonId.Value))
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             return activeLoans.Select(d => new ActiveLoanSummaryDTO
             {
@@ -82,7 +82,7 @@ namespace Infrastructure.Repositories
                 query = query.Where(d => EF.Functions.Like(d.LoanApplication.LoanProductSetting.LoanProduct.ProductName, pattern));
             }
 
-            var disbursements = await query.ToListAsync();
+            var disbursements = await query.OrderByDescending(x => x.Id).ToListAsync();
 
             return disbursements.Select(d => new LoanDisbursementReportDTO
             {
@@ -117,7 +117,7 @@ namespace Infrastructure.Repositories
             if (startDate.HasValue) query = query.Where(d => d.EndDate >= startDate.Value);
             if (endDate.HasValue) query = query.Where(d => d.EndDate < endDate.Value.Date.AddDays(1));
 
-            var loans = await query.ToListAsync();
+            var loans = await query.OrderByDescending(x => x.Id).ToListAsync();
 
             return loans.Select(d => new LoanMaturityReportDTO
             {
@@ -173,7 +173,7 @@ namespace Infrastructure.Repositories
                     UserName = a.UserName,
                     Timestamp = a.Timestamp
                 })
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<List<ActivityHeatmapDTO>> GetActivityHeatmapAsync(DateTime? startDate = null, DateTime? endDate = null)
@@ -237,7 +237,7 @@ namespace Infrastructure.Repositories
                 .Include(d => d.PaymentModality)
                 .Include(d => d.Payments)
                 .Where(d => d.IsActive && (d.PersonId == currentPersonId.Value || d.LoanApplication.PersonId == currentPersonId.Value))
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             var reports = new List<RepaymentScheduleReportDTO>();
 
@@ -322,7 +322,8 @@ namespace Infrastructure.Repositories
                 .Include(d => d.LoanApplication).ThenInclude(la => la.LoanProductSetting).ThenInclude(lps => lps.LoanProduct)
                 .Include(d => d.PaymentModality)
                 .Include(d => d.Payments)
-                .Where(d => d.IsActive && (d.PersonId == currentPersonId.Value || d.LoanApplication.PersonId == currentPersonId.Value))
+                .Where(d => d.IsActive && d.EndDate < DateTime.Now && (d.PersonId == currentPersonId.Value || d.LoanApplication.PersonId == currentPersonId.Value))
+                .OrderByDescending(x => x.Id)
                 .ToListAsync();
 
             var overdueList = new List<OverdueReportDTO>();
@@ -406,7 +407,7 @@ namespace Infrastructure.Repositories
                 .Include(d => d.Payments)
                 .Include(d => d.LoanApplication)
                 .Where(d => d.IsActive && (d.PersonId == currentPersonId.Value || d.LoanApplication.PersonId == currentPersonId.Value))
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             decimal totalExpected = loans.Sum(d => d.Amount * (d.InterestRate / 100));
             // Simplified expected vs collected for demo
@@ -443,7 +444,7 @@ namespace Infrastructure.Repositories
                             p.IsActive &&
                             p.PaymentDate >= start && p.PaymentDate < endExclusive &&
                             (p.Status == "Completed" || p.Status == "Partial"))
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             decimal totalInterest = 0;
             decimal totalPenalty = 0;
@@ -495,7 +496,7 @@ namespace Infrastructure.Repositories
                 .Include(f => f.LoanApplication)
                 .Where(f => (f.PersonId == currentPersonId.Value || f.LoanApplication.PersonId == currentPersonId.Value) &&
                             f.DepositDate >= start && f.DepositDate < endExclusive)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             var totalFees = fees.Sum(f => f.Amount);
             var processingFeeDetails = fees.Select(f => new ProcessingFeeDetailDTO {
@@ -511,7 +512,7 @@ namespace Infrastructure.Repositories
                             w.IsActive && w.Status == "Approved" &&
                             w.ApprovedDate >= start && w.ApprovedDate < endExclusive)
                 .Include(w => w.Disbursement)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
             
             // Filter waivers manually if needed, assuming Disbursement is loaded.
             var validWaivers = waivers.Where(w => w.Disbursement != null && (w.Disbursement.PersonId == currentPersonId.Value)).ToList();
@@ -529,7 +530,7 @@ namespace Infrastructure.Repositories
                 .Where(e => e.PersonId == currentPersonId.Value &&
                             e.IsActive &&
                             e.ExpenseDate >= start && e.ExpenseDate < endExclusive)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             var totalExpenses = expenses.Sum(e => e.Amount);
             var expenseDetails = expenses.Select(e => new OperatingExpenseDetailDTO {
@@ -571,7 +572,7 @@ namespace Infrastructure.Repositories
                 .Include(d => d.Payments)
                 .Include(d => d.LoanApplication).ThenInclude(la => la.Borrower)
                 .Where(d => d.PersonId == currentPersonId.Value || d.LoanApplication.PersonId == currentPersonId.Value)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             var portfolio = new List<CustomerPortfolioReportDTO>();
             var groupedByBorrower = disbursements.GroupBy(d => d.LoanApplication.BorrowerId);
@@ -635,7 +636,7 @@ namespace Infrastructure.Repositories
             var applications = await dbContext.LoanApplications
                 .Include(la => la.Borrower)
                 .Where(la => la.PersonId == currentPersonId.Value)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             return applications.Select(la => new ApplicationStatusReportDTO
             {
@@ -659,19 +660,19 @@ namespace Infrastructure.Repositories
             var settingsList = await dbContext.LoanProductSettings
                 .Include(s => s.LoanProduct)
                 .Where(s => s.PersonId == currentPersonId.Value)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             var disbursements = await dbContext.Disbursements
                 .Include(d => d.LoanApplication).ThenInclude(la => la.Borrower)
                 .Include(d => d.LoanApplication).ThenInclude(la => la.LoanProductSetting)
                 .Include(d => d.Payments)
                 .Where(d => d.PersonId == currentPersonId.Value || d.LoanApplication.PersonId == currentPersonId.Value)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             var waivers = await dbContext.Waivers
                 .Include(w => w.Disbursement).ThenInclude(d => d.LoanApplication).ThenInclude(la => la.LoanProductSetting)
                 .Where(w => w.Status == "Approved" && w.IsActive && (w.Disbursement.PersonId == currentPersonId.Value))
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             var trackerReports = new List<LoanProductTrackerDTO>();
 
@@ -739,19 +740,19 @@ namespace Infrastructure.Repositories
 
             var accounts = await dbContext.Accounts
                 .Where(a => a.PersonId == currentPersonId.Value)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             var payments = await dbContext.Payments
                 .Where(p => p.PersonId == currentPersonId.Value && p.IsActive && p.PaymentDate >= start && p.PaymentDate < endExclusive)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             var feeDeposits = await dbContext.ProcessFeeDeposits
                 .Where(f => f.PersonId == currentPersonId.Value && f.DepositDate >= start && f.DepositDate < endExclusive)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             var disbursements = await dbContext.Disbursements
                 .Where(d => d.PersonId == currentPersonId.Value && d.IsActive && d.CreatedAt >= start && d.CreatedAt < endExclusive)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             var reports = new List<AccountHistoryReportDTO>();
             foreach(var account in accounts)
@@ -829,3 +830,4 @@ namespace Infrastructure.Repositories
         }
     }
 }
+

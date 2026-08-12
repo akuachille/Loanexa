@@ -25,8 +25,8 @@ namespace Infrastructure.Repositories
             }       
             using var context = _contextFactory.CreateDbContext();
             return await context.Reasons
-            .Where(a => a.PersonId == _userContext.PersonId) 
-            .ToListAsync();
+             
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
 
         public async Task<Reason?> GetReasonByIdAsync(int id)
@@ -50,8 +50,7 @@ namespace Infrastructure.Repositories
             var reason = new Reason
             {
                 Name = reasonDTO.Name,
-                IsActive = true,
-                PersonId = user.Person.Id
+                IsActive = true
             };
 
             context.Reasons.Add(reason);
@@ -59,3 +58,4 @@ namespace Infrastructure.Repositories
         }
     }
 }
+

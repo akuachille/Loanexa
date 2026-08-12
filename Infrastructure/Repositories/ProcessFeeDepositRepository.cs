@@ -27,7 +27,7 @@ namespace Infrastructure.Repositories
             .Include(a => a.LoanApplication)
             .Where(a => a.PersonId == _userContext.PersonId)
             .Include(a => a.Account)
-            .ToListAsync();
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
         public async Task <ProcessFeeDeposit> GetProcessFeeDepositByIdAsync(int Id)
         {

@@ -56,7 +56,7 @@ namespace Infrastructure.Repositories
                 .Include(e => e.Account)
                 .Where(e => e.PersonId == _userContext.PersonId)
                 .OrderByDescending(e => e.ExpenseDate)
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
 
             return expenses.Select(expense => new ExpenseDTO
             {
@@ -121,3 +121,4 @@ namespace Infrastructure.Repositories
         }
     }
 }
+

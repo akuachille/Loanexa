@@ -30,7 +30,7 @@ namespace Infrastructure.Repositories
         return await dbContext.Collaterals
             .Include(a => a.LoanApplication)
             .Where(a => a.PersonId == _userContext.PersonId)
-            .ToListAsync();
+            .OrderByDescending(x => x.Id).ToListAsync();
         }
         public async Task <Collateral> GetCollateralByIdAsync(int Id)
         {

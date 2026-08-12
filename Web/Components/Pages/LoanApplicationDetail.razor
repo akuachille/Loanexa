@@ -15,6 +15,7 @@
 @inject IProvidedDocument DocumentRepo
 @inject ILoanProductSetting ProductSettingRepo
 @inject ILoanApplicationService LoanService
+@inject IRequirementVerificationService VerificationService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject IDialogService DialogService
@@ -160,6 +161,24 @@
             </MudGrid>
         </MudPaper>
 
+        @if (application.Status != LoanStatus.Paid && application.Status != LoanStatus.Approved && verifications.Any(v => !v.IsVerified))
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4 rounded-lg bg-white" Style="border-left: 5px solid var(--mud-palette-warning);">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: bold;" Class="mb-2">Pending Requirements / Missing Documents</MudText>
+                <MudList T="string" Dense="true" Class="pa-0">
+                    @foreach (var v in verifications.Where(v => !v.IsVerified))
+                    {
+                        bool isDocument = v.Requirement != null;
+                        string title = isDocument ? v.Requirement.RequiredDocument?.DocumentName : v.AdditionalRequirement?.RequirementText;
+                        string type = isDocument ? "Document" : "Requirement";
+                        <MudListItem Icon="@(isDocument ? Icons.Material.Filled.InsertDriveFile : Icons.Material.Filled.Rule)" Style="padding-top: 4px; padding-bottom: 4px;">
+                            <MudText Typo="Typo.body2" Color="Color.Error"><b>@type:</b> @title</MudText>
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudAlert>
+        }
+
         <MudGrid Spacing="4" Class="mb-4">
             @* GUARANTORS *@
             <MudItem xs="12" md="6">
@@ -247,35 +266,47 @@
         </MudGrid>
 
         <MudGrid Spacing="4" Class="mb-4">
-            @* MISSING MANDATORY DOCUMENTS *@
+            @* REQUIREMENTS VERIFICATION CHECKLIST *@
             <MudItem xs="12" md="6">
                 <div class="d-flex align-center mb-3 mt-2">
-                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" Class="mr-2" />
-                    <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 600;">Missing Mandatory Documents</MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.FactCheck" Color="Color.Primary" Class="mr-2" />
+                    <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 600;">Requirements Verification</MudText>
                 </div>
                 <MudPaper Elevation="2" Class="rounded-lg bg-white overflow-hidden h-100" Style="border-top: 4px solid var(--mud-palette-primary);">
-                    @if (missingDocuments.Any())
+                    @if (verifications.Any())
                     {
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="border-bottom: 1px solid #e0e0e0; background-color: #FAFAFA;">
-                                    <th style="padding: 8px 16px; text-align: left; font-size: 12px; color: var(--mud-palette-primary); font-weight: 600;">Document Name</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var m in missingDocuments)
-                                {
-                                    <tr style="border-bottom: 1px solid #f0f0f0;">
-                                        <td style="padding: 12px 16px; font-size: 13px; font-weight: 500; color: #d32f2f;">@m.DocumentName<br/><span style="font-size:11px; font-weight: normal;">@m.DocumentType</span></td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                        <MudList T="string" Class="pa-0">
+                            @foreach (var v in verifications)
+                            {
+                                bool isDocument = v.Requirement != null;
+                                string title = isDocument ? v.Requirement.RequiredDocument?.DocumentName : v.AdditionalRequirement?.RequirementText;
+                                string subTitle = isDocument ? $"Document ({v.Requirement.RequiredDocument?.DocumentType})" : "Requirement";
+                                var providedDoc = isDocument ? documents.FirstOrDefault(d => string.Equals(d.DocumentName, title, StringComparison.OrdinalIgnoreCase)) : null;
+                                
+                                <MudListItem Class="border-b-1" Style="border-color: #f0f0f0; border-bottom-style: solid; padding-top: 8px; padding-bottom: 8px;">
+                                    <div class="d-flex align-center" style="width: 100%;">
+                                        <MudCheckBox T="bool" Value="@v.IsVerified" ValueChanged="@(async (val) => await ToggleVerification(v, val))" Color="Color.Success" Class="mr-3" />
+                                        <div style="flex-grow: 1;">
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600; font-size: 13px; color: var(--mud-palette-text-primary);">@title</MudText>
+                                            <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">@subTitle</MudText>
+                                            @if (isDocument && providedDoc == null)
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Error" Class="d-block mt-1">Missing Document</MudText>
+                                            }
+                                        </div>
+                                        @if (providedDoc != null)
+                                        {
+                                            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary" OnClick="@(() => ViewDocument(providedDoc))">View</MudButton>
+                                        }
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
                     }
                     else
                     {
                         <div class="pa-4 text-center">
-                            <MudText Typo="Typo.body2" Color="Color.Success">There are no missing required documents.</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Success">No requirements found.</MudText>
                         </div>
                     }
                 </MudPaper>
@@ -378,7 +409,7 @@
     private LoanProduct loanProduct;
     private LoanProductSetting loanProductSetting;
     private List<ProvidedDocument> documents = new();
-    private List<RequiredDocument> missingDocuments = new();
+    private List<ApplicationRequirementVerification> verifications = new();
     private List<TransactionHistoryDTO> transactions = new();
 
     protected override async Task OnInitializedAsync()
@@ -418,15 +449,8 @@
 
             if (loanProductSetting != null)
             {
-                var allRequirements = await RequirementRepo.GetAllRequirementsAsync();
-                var requiredDocsForProduct = allRequirements
-                    .Where(r => r.LoanProductId == loanProductSetting.LoanProductId)
-                    .Select(r => r.RequiredDocument)
-                    .ToList();
-
-                missingDocuments = requiredDocsForProduct
-                    .Where(rd => rd != null && !documents.Any(d => string.Equals(d.DocumentName, rd.DocumentName, StringComparison.OrdinalIgnoreCase)))
-                    .ToList();
+                await VerificationService.InitializeVerificationsForApplicationAsync(application.Id, loanProductSetting.LoanProductId);
+                verifications = await VerificationService.GetVerificationsForApplicationAsync(application.Id);
             }
         }
     }
@@ -437,6 +461,13 @@
 
         if (newStatus == LoanStatus.Approved)
         {
+            var isAllVerified = await VerificationService.AreAllRequirementsVerifiedAsync(application.Id);
+            if (!isAllVerified)
+            {
+                Snackbar.Add("Cannot approve: Not all requirements have been verified.", Severity.Error);
+                return;
+            }
+
             var confirm = await DialogService.ShowMessageBox(
                 "Confirm Approval", 
                 "Are you sure you want to approve this application?", 
@@ -482,6 +513,13 @@
         {
             Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
+    }
+
+    private async Task ToggleVerification(ApplicationRequirementVerification verification, bool isVerified)
+    {
+        verification.IsVerified = isVerified;
+        await VerificationService.UpdateVerificationAsync(verification.Id, isVerified);
+        Snackbar.Add(isVerified ? "Requirement verified" : "Requirement unverified", Severity.Success);
     }
 
     private Color GetStatusColor(LoanStatus status) => status switch

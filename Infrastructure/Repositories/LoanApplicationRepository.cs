@@ -35,7 +35,7 @@ namespace Infrastructure.Repositories
                 .Include(a => a.Borrower)
                 .Include(a => a.PaymentModality)
                 .Where(a => allowedPersonIds.Contains(a.PersonId))
-                .ToListAsync();
+                .OrderByDescending(x => x.Id).ToListAsync();
         }
         public async Task <LoanApplication> GetLoanApplicationById(int Id)
         {
@@ -200,7 +200,7 @@ public async Task<List<LoanApplication>> GetFilteredLoansAsync(string role, int?
         query = query.Where(l => l.BorrowerId == currentUserId.Value);
     }
 
-    return await query.ToListAsync();
+    return await query.OrderByDescending(x => x.Id).ToListAsync();
 }
 
 public async Task UpdateStatusAsync(int id, LoanStatus newStatus)
@@ -279,7 +279,7 @@ public async Task<List<TransactionHistoryDTO>> GetTransactionHistoryAsync(int lo
     // 1. Process Fees
     var processFees = await dbContext.ProcessFeeDeposits
         .Where(p => p.LoanApplicationId == loanApplicationId)
-        .ToListAsync();
+        .OrderByDescending(x => x.Id).ToListAsync();
 
     history.AddRange(processFees.Select(p => new TransactionHistoryDTO
     {
@@ -292,7 +292,7 @@ public async Task<List<TransactionHistoryDTO>> GetTransactionHistoryAsync(int lo
     // 2. Disbursements
     var disbursements = await dbContext.Disbursements
         .Where(d => d.LoanApplicationId == loanApplicationId && d.IsActive)
-        .ToListAsync();
+        .OrderByDescending(x => x.Id).ToListAsync();
 
     history.AddRange(disbursements.Select(d => new TransactionHistoryDTO
     {
@@ -309,7 +309,7 @@ public async Task<List<TransactionHistoryDTO>> GetTransactionHistoryAsync(int lo
         var payments = await dbContext.Payments
             .Include(p => p.PaymentType)
             .Where(p => disbursementIds.Contains(p.DisbursementId) && p.IsActive)
-            .ToListAsync();
+            .OrderByDescending(x => x.Id).ToListAsync();
 
         history.AddRange(payments.Select(p => new TransactionHistoryDTO
         {
@@ -354,3 +354,4 @@ public async Task<List<TransactionHistoryDTO>> GetTransactionHistoryAsync(int lo
         }
     }
 }
+
