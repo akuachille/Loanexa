@@ -265,14 +265,10 @@
 
     <div class="main-grid">
         <MudGrid Spacing="3">
-            <!-- Left Side: Performance & Stats -->
-            <MudItem xs="12" lg="12" Style="height: 100%; display: flex; flex-direction: column;">
+            <!-- Top: Performance Stats -->
+            <MudItem xs="12" lg="12">
                 <div class="performance-card">
-                    <div class="d-flex justify-space-between align-center mb-3 gap-3">
-                        <div style="font-size: 16px; font-weight: 700; color: #1B2559;"></div>
-                    </div>
-
-                    <MudGrid Class="mb-3" Spacing="2">
+                    <MudGrid Spacing="2">
                         <MudItem xs="6" md="3">
                             <div class="stat-card" style="border-left: 4px solid #4318FF;">
                                 <div>
@@ -306,17 +302,26 @@
                             </div>
                         </MudItem>
                     </MudGrid>
+                </div>
+            </MudItem>
 
+            <!-- Bottom: Chart and Heatmap -->
+            <MudItem xs="12" md="6">
+                <div class="performance-card" style="height: 100%;">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <div style="font-size: 16px; font-weight: 800; color: #1B2559;">Applications Trend</div>
+                    </div>
                     <div class="chart-container">
                         @if (TrendData != null && TrendData.Any())
                         {
-                            <ApexChart TItem="MonthlyApplicationData"
+                            <ApexChart @ref="appChart"
+                                       TItem="MonthlyApplicationData"
                                        Height="250"
                                        Options="chartOptions">
                                 <ApexPointSeries TItem="MonthlyApplicationData"
                                                  Items="TrendData"
                                                  Name="Applications"
-                                                 SeriesType="SeriesType.Area"
+                                                 SeriesType="SeriesType.Bar"
                                                  XValue="@(e => e.Month)"
                                                  YValue="@(e => (decimal)e.Count)" />
                             </ApexChart>
@@ -325,17 +330,16 @@
                 </div>
             </MudItem>
 
-            <!-- Old Right Side removed -->
+            <MudItem xs="12" md="6">
+                <div class="performance-card" style="height: 100%;">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <div style="font-size: 16px; font-weight: 800; color: #1B2559;">Daily Activity</div>
+                        <div style="font-size: 10px; color: #A3AED0;">Last 365 Days</div>
+                    </div>
+                    <ActivityHeatmap Data="@HeatmapData" />
+                </div>
+            </MudItem>
         </MudGrid>
-    </div>
-
-    <!-- Heatmap Section -->
-    <div style="margin-bottom: 20px;">
-        <div class="d-flex justify-space-between align-center mb-2">
-            <div style="font-size: 16px; font-weight: 800; color: #1B2559;">Daily Activity</div>
-            <div style="font-size: 10px; color: #A3AED0;">Last 365 Days</div>
-        </div>
-        <ActivityHeatmap Data="@HeatmapData" />
     </div>
 
     <!-- Bottom Section: Account Balances by Type -->
@@ -392,6 +396,8 @@
 
     private List<MonthlyApplicationData> TrendData = new();
     
+    private ApexChart<MonthlyApplicationData>? appChart;
+
     private ApexChartOptions<MonthlyApplicationData> chartOptions = new()
     {
         Chart = new Chart
@@ -422,6 +428,10 @@
     private async Task ApplyFilter()
     {
         await LoadDashboardData();
+        if (appChart != null)
+        {
+            await appChart.RenderAsync();
+        }
     }
 
     private async Task LoadDashboardData()

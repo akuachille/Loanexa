@@ -38,7 +38,6 @@
                 @* 1. LOAN SELECTION *@
               @* 1. LOAN SELECTION *@
 <MudItem xs="12">
-    @* Change T to string to match your DTO *@
     <MudSelect T="int"
                Label="Linked Loan Application"
                @bind-Value="Model.LoanApplicationId"
@@ -46,7 +45,16 @@
                Dense="true"
                Margin="Margin.Dense"
                Disabled="@(PreselectedLoanApplicationId.HasValue)"
-              >
+               ToStringFunc="@(id => {
+                   if (id == 0) return "-- Select Loan --";
+                   var app = _loanApplications.FirstOrDefault(a => a.Id == id);
+                   if (app != null)
+                   {
+                       var borrowerName = !string.IsNullOrWhiteSpace(app.Borrower?.CompanyName) ? app.Borrower.CompanyName : $"{app.Borrower?.FirstName} {app.Borrower?.LastName}";
+                       return $"{app.ApplicationCode} - {borrowerName}";
+                   }
+                   return id.ToString();
+               })">
         
        <MudSelectItem T="int" Value="0">-- Select Loan --</MudSelectItem>
         
