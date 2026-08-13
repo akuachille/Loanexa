@@ -45,23 +45,15 @@
                Dense="true"
                Margin="Margin.Dense"
                Disabled="@(PreselectedLoanApplicationId.HasValue)"
-               ToStringFunc="@(id => {
-                   if (id == 0) return "-- Select Loan --";
-                   var app = _loanApplications.FirstOrDefault(a => a.Id == id);
-                   if (app != null)
-                   {
-                       var borrowerName = !string.IsNullOrWhiteSpace(app.Borrower?.CompanyName) ? app.Borrower.CompanyName : $"{app.Borrower?.FirstName} {app.Borrower?.LastName}";
-                       return $"{app.ApplicationCode} - {borrowerName}";
-                   }
-                   return id.ToString();
-               })">
+               ToStringFunc="@GetLoanDisplayText"
+              >
         
        <MudSelectItem T="int" Value="0">-- Select Loan --</MudSelectItem>
         
         @foreach (var app in _loanApplications)
         {
             <MudSelectItem T="int" Value="@app.Id">
-                @app.ApplicationCode - @(!string.IsNullOrWhiteSpace(app.Borrower?.CompanyName) ? app.Borrower.CompanyName : $"{app.Borrower?.FirstName} {app.Borrower?.LastName}")
+                @GetLoanDisplayText(app.Id)
             </MudSelectItem>
         }
     </MudSelect>
@@ -269,5 +261,17 @@
             Snackbar.Add($"Error saving collateral: {ex.Message}", Severity.Error);
         }
     }
-}
 
+    private string GetLoanDisplayText(int id)
+    {
+        if (id == 0) return "-- Select Loan --";
+        var app = _loanApplications.FirstOrDefault(a => a.Id == id);
+        if (app == null) return id.ToString();
+        
+        var borrowerName = !string.IsNullOrWhiteSpace(app.Borrower?.CompanyName) 
+            ? app.Borrower.CompanyName 
+            : $"{app.Borrower?.FirstName} {app.Borrower?.LastName}";
+            
+        return $"{app.ApplicationCode} - {borrowerName}";
+    }
+}

@@ -1,4 +1,4 @@
-@using  Application.DTO
+﻿@using  Application.DTO
 @using System.ComponentModel.DataAnnotations
 @using Application.Interfaces
 @using Application.Services.BorrowerTypes
@@ -17,7 +17,6 @@
 @inject ILocationService LocationService 
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-
 
 <MudDialog Style="overflow:hidden;" >
 
@@ -51,19 +50,19 @@
                                    Placeholder="--Select Borrower Type--"
                                    Value="Model.BorrowerTypeId"
                                    ValueChanged="OnBorrowerTypeChanged"
-                                   Variant="Variant.Outlined"
+                                   Required="true" Variant="Variant.Outlined"
                                    Dense="true"
                                    Margin="Margin.Dense"
                                   
                                   >
 
-                            <MudSelectItem Value="0">--Select Borrower Type--</MudSelectItem>
+                            <MudSelectItem Value="0" Required="true">--Select Borrower Type--</MudSelectItem>
 
                             @if (acctype != null)
                             {
                                 foreach (var type in acctype)
                                 {
-                                    <MudSelectItem T="int" Value="@type.Id">@type.Type</MudSelectItem>
+                                    <MudSelectItem T="int" Value="@type.Id" Required="true">@type.Type</MudSelectItem>
                                 }
                             }
                         </MudSelect>
@@ -72,14 +71,14 @@
                 {
                     <MudItem  xs="6">
                     <MudTextField Label="First Name"
-                                  Variant="Variant.Outlined"
+                                  Required="true" Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
                                   @bind-Value="Model.FirstName"
                                   For="@(() => Model.FirstName)" />
                     </MudItem>
                     <MudItem  xs="6">
                     <MudTextField Label="Last Name"
-                                  Variant="Variant.Outlined"
+                                  Required="true" Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
                                   @bind-Value="Model.LastName"
                                   For="@(() => Model.LastName)" />
@@ -89,7 +88,7 @@
                 {
                     <MudItem  xs="12">
                     <MudTextField Label="Business Name"
-                                  Variant="Variant.Outlined"
+                                  Required="true" Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
                                   @bind-Value="Model.CompanyName"
                                   For="@(() => Model.CompanyName)" />
@@ -104,15 +103,15 @@
                         <MudSelect T="Maritalstatus?"
                                    Label="Marital status"
                                    @bind-Value="Model.Maritalstatus"
-                                   Variant="Variant.Outlined"
+                                   Required="true" Variant="Variant.Outlined"
                                    Dense="true"
                                    Margin="Margin.Dense"
                                   
                                   >
-                            <MudSelectItem T="Maritalstatus?" Disabled="true">-- Select Maritalstatus --</MudSelectItem>
+                            <MudSelectItem T="Maritalstatus?" Disabled="true" Required="true">-- Select Maritalstatus --</MudSelectItem>
                             @foreach (Maritalstatus item in Enum.GetValues(typeof(Maritalstatus)))
                             {
-                                <MudSelectItem T="Maritalstatus?" Value="item">@item.ToString()</MudSelectItem>
+                                <MudSelectItem T="Maritalstatus?" Value="item" Required="true">@item.ToString()</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
@@ -120,15 +119,15 @@
                         <MudSelect T="Sex?"
                                    Label="Sex"
                                    @bind-Value="Model.sex"
-                                   Variant="Variant.Outlined"
+                                   Required="true" Variant="Variant.Outlined"
                                    Dense="true"
                                    Margin="Margin.Dense"
                                   
                                   >
-                            <MudSelectItem T="Sex?" Disabled="true">-- Select Sex --</MudSelectItem>
+                            <MudSelectItem T="Sex?" Disabled="true" Required="true">-- Select Sex --</MudSelectItem>
                             @foreach (Sex item in Enum.GetValues(typeof(Sex)))
                             {
-                                <MudSelectItem T="Sex?" Value="item">@item.ToString()</MudSelectItem>
+                                <MudSelectItem T="Sex?" Value="item" Required="true">@item.ToString()</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
@@ -136,7 +135,7 @@
                           <MudDatePicker ShowToolbar="false" Label="Date Of Birth"
                            DateFormat="yyyy-MM-dd"
                            @bind-Date="Model.DateOfBirth"
-                            Variant="Variant.Outlined"
+                            Required="true" Variant="Variant.Outlined"
                             Margin="Margin.Dense"
                             
                             />
@@ -145,7 +144,7 @@
 
                   <MudItem  xs="6">
                 <MudTextField Label="@(isOrganization ? "TIN / Registration No." : "Identification Number")"
-                              Variant="Variant.Outlined"
+                              Required="true" Variant="Variant.Outlined"
                               Margin="Margin.Dense"
                               @bind-Value="Model.IdentificationNumber"
                               For="@(() => Model.IdentificationNumber)" 
@@ -155,7 +154,7 @@
                 </MudItem>
                   <MudItem  xs="6">
                 <MudTextField Label="Email"
-                              Variant="Variant.Outlined"
+                              Required="true" Variant="Variant.Outlined"
                               Margin="Margin.Dense"
                               @bind-Value="Model.Email"
                               For="@(() => Model.Email)" />
@@ -163,7 +162,7 @@
                   <MudItem  xs="6">
 
                 <MudTextField Label="Phone Number"
-                              Variant="Variant.Outlined"
+                              Required="true" Variant="Variant.Outlined"
                               Margin="Margin.Dense"
                               @bind-Value="Model.PhoneNumber"
                               For="@(() => Model.PhoneNumber)" />
@@ -173,14 +172,14 @@
                   {
                      <MudItem xs="6">
                           <MudTextField Label="Spouse Name"
-                                        Variant="Variant.Outlined"
+                                        Required="true" Variant="Variant.Outlined"
                                         Margin="Margin.Dense"
                                         @bind-Value="Model.SpouceName"
                                         For="@(() => Model.SpouceName)" />
                       </MudItem>
                       <MudItem xs="6">
                           <MudTextField Label="Spouse ID Number"
-                                        Variant="Variant.Outlined"
+                                        Required="true" Variant="Variant.Outlined"
                                         Margin="Margin.Dense"
                                          MaxLength="16"
                                         Counter="16"
@@ -194,7 +193,7 @@
                   {
                       <MudItem xs="4">
                           <MudTextField Label="Next Of Kin"
-                                        Variant="Variant.Outlined"
+                                        Required="true" Variant="Variant.Outlined"
                                         Margin="Margin.Dense"
                                         @bind-Value="Model.NextOfKin"
                                         For="@(() => Model.NextOfKin)" />
@@ -202,7 +201,7 @@
 
                       <MudItem xs="4">
                           <MudTextField Label="Kin Phone Number"
-                                        Variant="Variant.Outlined"
+                                        Required="true" Variant="Variant.Outlined"
                                         Margin="Margin.Dense"
                                         @bind-Value="Model.KinPhoneNumber"
                                         For="@(() => Model.KinPhoneNumber)" />
@@ -210,7 +209,7 @@
 
                       <MudItem xs="4">
                           <MudTextField Label="Relationship"
-                                        Variant="Variant.Outlined"
+                                        Required="true" Variant="Variant.Outlined"
                                         Margin="Margin.Dense"
                                         @bind-Value="Model.NextOfKinRelationship"
                                         For="@(() => Model.NextOfKinRelationship)" />
@@ -220,14 +219,14 @@
                   {
                       <MudItem xs="6">
                           <MudTextField Label="Contact Person Name"
-                                        Variant="Variant.Outlined"
+                                        Required="true" Variant="Variant.Outlined"
                                         Margin="Margin.Dense"
                                         @bind-Value="Model.ContactPersonName"
                                         For="@(() => Model.ContactPersonName)" />
                       </MudItem>
                       <MudItem xs="6">
                           <MudTextField Label="Contact Person Phone"
-                                        Variant="Variant.Outlined"
+                                        Required="true" Variant="Variant.Outlined"
                                         Margin="Margin.Dense"
                                         @bind-Value="Model.ContactPersonPhone"
                                         For="@(() => Model.ContactPersonPhone)" />
@@ -240,7 +239,7 @@
               >
         @foreach (var p in _provinces)
         {
-            <MudSelectItem Value="@p.Name">@p.Name</MudSelectItem>
+            <MudSelectItem Value="@p.Name" Required="true">@p.Name</MudSelectItem>
         }
     </MudSelect>
 </MudItem>
@@ -253,7 +252,7 @@
               >
         @foreach (var d in _districts)
         {
-            <MudSelectItem Value="@d.Name">@d.Name</MudSelectItem>
+            <MudSelectItem Value="@d.Name" Required="true">@d.Name</MudSelectItem>
         }
     </MudSelect>
 </MudItem>
@@ -266,7 +265,7 @@
               >
         @foreach (var s in _sectors)
         {
-            <MudSelectItem Value="@s.Name">@s.Name</MudSelectItem>
+            <MudSelectItem Value="@s.Name" Required="true">@s.Name</MudSelectItem>
         }
     </MudSelect>
 </MudItem>
@@ -279,7 +278,7 @@
               >
         @foreach (var c in _cells)
         {
-            <MudSelectItem Value="@c.Name">@c.Name</MudSelectItem>
+            <MudSelectItem Value="@c.Name" Required="true">@c.Name</MudSelectItem>
         }
     </MudSelect>
 </MudItem>
@@ -292,7 +291,7 @@
               >
         @foreach (var v in _villages)
         {
-            <MudSelectItem Value="@v.Name">@v.Name</MudSelectItem>
+            <MudSelectItem Value="@v.Name" Required="true">@v.Name</MudSelectItem>
         }
     </MudSelect>
 </MudItem>

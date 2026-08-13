@@ -43,7 +43,7 @@
         </MudPaper>
 
 
-        <!-- ══════════ FORM ══════════ -->
+        
         <EditForm Model="Model" OnValidSubmit="onValidSubmit">
             <DataAnnotationsValidator />
             <ValidationSummary />
@@ -71,7 +71,7 @@
                     }
                 </MudSelect>
 
-                <!-- Dynamic List of Required Documents -->
+                
                 @if (Model.LoanApplicationId > 0)
                 {
                     <MudPaper Class="pa-4 rounded-lg" Elevation="0" Style="border: 1px solid #e0e0e0; background-color: #fafafa; max-height: 250px; overflow-y: auto;">
@@ -98,7 +98,7 @@
                                                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
                                                     @state.FileName
                                                 </MudText>
-                                                <MudCheckBox @bind-Value="state.IsPhysicalDocument" Label="Physical Document Provided" Color="Color.Primary" Size="Size.Small" />
+                                                <MudCheckBox @bind-Value="state.IsPhysicalDocument" Label="Is Physical Document Provided?" Color="Color.Primary" Size="Size.Small" />
                                             }
                                         </MudStack>
 

@@ -39,7 +39,7 @@
                 <MudItem xs="3" Class="d-flex justify-end align-center">
                     @if (remainingBalance > 0.01m)
                     {
-                        @if (UserContext.PrimaryRole == "Manager" || UserContext.PrimaryRole == "Tenant")
+                        @if (UserContext.PrimaryRole == "Manager" || UserContext.PrimaryRole == "Tenant" || UserContext.PrimaryRole == "Developer")
                         {
                             <MudButton Variant="Variant.Filled" 
                                        Color="Color.Error" 

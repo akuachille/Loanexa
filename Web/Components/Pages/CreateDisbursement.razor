@@ -248,7 +248,7 @@
     </DialogContent>
 
     <DialogActions>
-        @if (UserContext.PrimaryRole == "Manager" || UserContext.PrimaryRole == "Tenant")
+        @if (UserContext.PrimaryRole == "Manager" || UserContext.PrimaryRole == "Tenant" || UserContext.PrimaryRole == "Developer")
         {
             <MudStack Row="true" Class="px-4 pb-4" Style="width: 100%;">
                 <MudButton Variant="Variant.Filled"

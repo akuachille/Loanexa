@@ -31,7 +31,7 @@
             <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/Applications"))" Title="Back to Applications" />
             <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:700;">Loan Application Details</MudText>
         </div>
-        @if (UserContext.PrimaryRole == "Manager" || UserContext.PrimaryRole == "Tenant")
+        @if (UserContext.PrimaryRole == "Manager" || UserContext.PrimaryRole == "Tenant" || UserContext.PrimaryRole == "Developer")
         {
             @if (application?.Status != LoanStatus.Paid && application?.Status != LoanStatus.Approved)
             {
