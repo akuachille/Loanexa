@@ -122,7 +122,7 @@
                 <p style="margin-bottom: 5px; font-size: 12px; color: #64748B;">Scan to Verify</p>
                 @if (!string.IsNullOrEmpty(_qrCodeBase64))
                 {
-                    <img src="data:image/png;base64,@_qrCodeBase64" width="80" height="80" style="border-radius: 5px; border: 1px solid #e2e8f0; padding: 4px;" />
+                    <img src="data:image/png;base64,@_qrCodeBase64" width="110" height="110" style="border-radius: 5px; border: 1px solid #e2e8f0; padding: 4px;" />
                 }
             </div>
         </div>
@@ -221,7 +221,7 @@
                 currentPaidPool = 0;
             }
 
-            remainingBal -= amountPaidForInstallment;
+            decimal remainingForThis = totalInstallmentAmount - amountPaidForInstallment;
             
             string status = amountPaidForInstallment >= totalInstallmentAmount ? "PAID" :
                            amountPaidForInstallment > 0 ? "PARTIAL" : "PENDING";
@@ -233,7 +233,7 @@
                 PrincipalPart = principalPart,
                 InterestPart = interestPart,
                 TotalAmount = totalInstallmentAmount,
-                RemainingBalance = remainingBal > 0 ? remainingBal : 0,
+                RemainingBalance = remainingForThis > 0 ? remainingForThis : 0,
                 Status = status
             });
         }

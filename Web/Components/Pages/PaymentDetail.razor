@@ -1,0 +1,1092 @@
+@page "/PaymentDetail"
+@page "/PaymentDetail/{Id:int}"
+@page "/payment-detail/{Id:int}"
+@page "/PaymentDetail/disbursement/{DisbursementId:int}"
+@page "/payment-detail"
+
+@using Domain.Entities
+@using Domain.ValueObjects
+@using Application.DTO
+@using Application.Services.Disbursements
+@using Application.Services.LoanApplications
+@using Application.Services.Payments
+@using Application.Services.Penalities
+@using Application.Services.Accounts
+@using Application.Services.PaymentTypes
+@using Application.Interfaces
+@using Infrastructure.Data
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using System.IO
+
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject IDisbursementService DisbursementService
+@inject ILoanApplicationService LoanApplicationService
+@inject IPaymentService PaymentService
+@inject IPenalityService PenalityService
+@inject IAccountService AccountService
+@inject IPaymentTypeService PaymentTypeService
+@inject IUserContext UserContext
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Payment & Installment Details - @(BorrowerDisplayName)</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-12 px-4 px-md-8">
+    @if (_isLoading)
+    {
+        <div class="d-flex flex-column align-center justify-center py-16">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Loading loan installment details...</MudText>
+        </div>
+    }
+    else if (_disbursement == null)
+    {
+        <MudPaper Elevation="0" Class="pa-8 rounded-xl border text-center" Style="background-color: white; border-color: #e2e8f0;">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Color="Color.Secondary" Size="Size.Large" Class="mb-3" />
+            <MudText Typo="Typo.h6" Style="font-weight: 700; color: #1B2559;">No Loan / Disbursement Selected</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                Please choose an active loan from the list below or search by borrower name/application code.
+            </MudText>
+            
+            <div style="max-width: 450px; margin: 0 auto;">
+                <MudSelect T="int" Value="_selectedDisbursementId" ValueChanged="OnDisbursementSelected"
+                           Label="Select Loan Account" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                           AnchorOrigin="Origin.BottomCenter" AdornmentIcon="@Icons.Material.Filled.ReceiptLong" AdornmentColor="Color.Primary">
+                    <MudSelectItem T="int" Value="0">-- Select a Loan Account --</MudSelectItem>
+                    @foreach (var d in _allDisbursements)
+                    {
+                        var bName = !string.IsNullOrEmpty(d.LoanApplication?.Borrower?.CompanyName)
+                            ? d.LoanApplication.Borrower.CompanyName
+                            : $"{d.LoanApplication?.Borrower?.FirstName} {d.LoanApplication?.Borrower?.LastName}".Trim();
+                        <MudSelectItem T="int" Value="@d.Id">
+                            @(d.LoanApplication?.ApplicationCode ?? $"#APP-{d.LoanApplicationId}") - @bName (@d.Amount.ToString("N2"))
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+            
+            <div class="mt-6">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="GoBack">
+                    Back to Payments Dashboard
+                </MudButton>
+            </div>
+        </MudPaper>
+    }
+    else
+    {
+        @* --- QUICK SWITCHER (IF MULTIPLE LOANS EXIST) --- *@
+        @if (_allDisbursements.Count > 1)
+        {
+            <div class="d-flex justify-space-between align-center mb-3">
+                <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0" />
+                <div style="min-width: 280px;">
+                    <MudSelect T="int" Value="_disbursement.Id" ValueChanged="OnDisbursementSelected"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                               AnchorOrigin="Origin.BottomCenter" Style="background: white;">
+                        @foreach (var d in _allDisbursements)
+                        {
+                            var bName = !string.IsNullOrEmpty(d.LoanApplication?.Borrower?.CompanyName)
+                                ? d.LoanApplication.Borrower.CompanyName
+                                : $"{d.LoanApplication?.Borrower?.FirstName} {d.LoanApplication?.Borrower?.LastName}".Trim();
+                            <MudSelectItem T="int" Value="@d.Id">
+                                @(d.LoanApplication?.ApplicationCode ?? $"#APP-{d.LoanApplicationId}") - @bName
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+            </div>
+        }
+
+        @* ========================================================================= *@
+        @* 1. TOP CARD: LOAN DETAILS                                                 *@
+        @* ========================================================================= *@
+        <MudPaper Elevation="0" Class="pa-5 mb-4 rounded-xl border" Style="background: #ffffff; border-color: #e2e8f0;">
+            @* Banner Row *@
+            <div class="d-flex justify-space-between align-center mb-4 pb-3" style="border-bottom: 1px solid #f1f5f9;">
+                <div>
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1B2559; margin-bottom: 2px;">
+                        Loan Details:
+                    </MudText>
+                    <div class="d-flex align-center gap-2 flex-wrap" style="font-size: 0.9rem;">
+                        <span style="font-weight: 700; color: #334155;">From:</span>
+                        <span style="font-weight: 600; color: #0f172a;">@(TenantOrganizationName)</span>
+                        <span style="color: #cbd5e1;">|</span>
+                        <span style="font-weight: 700; color: #334155;">To:</span>
+                        <span style="font-weight: 600; color: #0f172a;">@(BorrowerDisplayName)</span>
+                        <span style="color: #cbd5e1;">|</span>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" 
+                                 Color="@GetOverallLoanStatusColor()" 
+                                 Style="font-weight: 800; font-size: 0.8rem; padding: 0 8px; height: 24px;">
+                            @GetOverallLoanStatusText()
+                        </MudChip>
+                    </div>
+                </div>
+
+                <div>
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Default" 
+                                   OnClick="GoBack" 
+                                   Style="background: #f8fafc; border: 1px solid #e2e8f0;" />
+                </div>
+            </div>
+
+            @* 3 Column Info Grid *@
+            <MudGrid Spacing="3">
+                @* COLUMN 1: Personal / ID Details *@
+                <MudItem xs="12" sm="4">
+                    <MudStack Spacing="1">
+                        <div class="d-flex gap-2 align-center">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b; min-width: 100px;">Sex:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #475569;">@(_borrower?.sex?.ToString() ?? "N/A")</MudText>
+                        </div>
+                        <div class="d-flex gap-2 align-center">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b; min-width: 100px;">Identity No:</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #0f172a;">@BorrowerIdentityNo</MudText>
+                        </div>
+                        <div class="d-flex gap-2 align-center">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b; min-width: 100px;">Phone:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #475569;">@(!string.IsNullOrEmpty(_borrower?.PhoneNumber) ? _borrower.PhoneNumber : (!string.IsNullOrEmpty(_borrower?.ContactPersonPhone) ? _borrower.ContactPersonPhone : "N/A"))</MudText>
+                        </div>
+                    </MudStack>
+                </MudItem>
+
+                @* COLUMN 2: Interest & Terms *@
+                <MudItem xs="12" sm="4">
+                    <MudStack Spacing="1">
+                        <div class="d-flex gap-2 align-center">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b; min-width: 110px;">Interest Type:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #475569;">@(_disbursement.LoanApplication?.LoanProductSetting?.LoanProduct?.ProductName ?? "Loan Interest")</MudText>
+                        </div>
+                        <div class="d-flex gap-2 align-center">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b; min-width: 110px;">Interest Rate:</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #0284c7;">@(_disbursement.InterestRate.ToString("0.00"))%</MudText>
+                        </div>
+                        <div class="d-flex gap-2 align-center">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b; min-width: 110px;">Interest Period:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #475569;">@(_disbursement.PaymentModality?.Mode ?? "Monthly")</MudText>
+                        </div>
+                    </MudStack>
+                </MudItem>
+
+                @* COLUMN 3: Dates & Purpose *@
+                <MudItem xs="12" sm="4">
+                    <MudStack Spacing="1">
+                        <div class="d-flex gap-2 align-center">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b; min-width: 90px;">Date:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #475569;">@_disbursement.StartDate.ToString("yyyy-MM-dd")</MudText>
+                        </div>
+                        <div class="d-flex gap-2 align-center">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b; min-width: 90px;">Due Date:</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #0f172a;">@_disbursement.EndDate.ToString("yyyy-MM-dd")</MudText>
+                        </div>
+                        <div class="d-flex gap-2 align-center">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #1e293b; min-width: 90px;">Purpose:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #475569;">@(_disbursement.LoanApplication?.LoanProductSetting?.LoanProduct?.ProductName ?? "General Business Loan")</MudText>
+                        </div>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @* ========================================================================= *@
+        @* 2. SECOND CARD: LOAN FINANCIAL SUMMARY                                    *@
+        @* ========================================================================= *@
+        <MudPaper Elevation="0" Class="pa-5 mb-6 rounded-xl border" Style="background: #ffffff; border-color: #e2e8f0;">
+            <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1B2559; margin-bottom: 16px;">
+                Loan Financial Summary
+            </MudText>
+
+            <MudGrid Spacing="3">
+                @* ROW 1: Amount Disbursed, Total Principal, Total Interest *@
+                <MudItem xs="12" sm="4">
+                    <div class="d-flex gap-2 align-baseline">
+                        <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a;">Amount Disbursed:</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight: 800; color: #1e293b;">@DisbursedAmount.ToString("N2")</MudText>
+                    </div>
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <div class="d-flex gap-2 align-baseline">
+                        <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a;">Total Principal:</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight: 800; color: #1e293b;">@TotalPrincipalAmount.ToString("N2")</MudText>
+                    </div>
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <div class="d-flex gap-2 align-baseline">
+                        <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a;">Total Interest:</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight: 800; color: #1e293b;">@TotalInterestAmount.ToString("N2")</MudText>
+                    </div>
+                </MudItem>
+
+                @* ROW 2: Outstanding, Principal Paid, Interest Paid *@
+                <MudItem xs="12" sm="4">
+                    <div class="d-flex gap-2 align-baseline">
+                        <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a;">Outstanding:</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight: 800; color: #dc2626;">@TotalOutstandingBalance.ToString("N2")</MudText>
+                    </div>
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <div class="d-flex gap-2 align-baseline">
+                        <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a;">Principal Paid:</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight: 800; color: #16a34a;">@TotalPrincipalPaid.ToString("N2")</MudText>
+                    </div>
+                </MudItem>
+
+                <MudItem xs="12" sm="4">
+                    <div class="d-flex gap-2 align-baseline">
+                        <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a;">Interest Paid:</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight: 800; color: #16a34a;">@TotalInterestPaid.ToString("N2")</MudText>
+                    </div>
+                </MudItem>
+
+                @* EXTRA SUMMARY LINE: Penalties & Progress *@
+                @if (TotalPenaltiesAccrued > 0 || TotalPenaltiesPaid > 0)
+                {
+                    <MudItem xs="12">
+                        <MudDivider Class="my-2" Style="border-color: #f1f5f9;" />
+                        <div class="d-flex gap-6 flex-wrap align-center pt-1">
+                            <div class="d-flex gap-2 align-baseline">
+                                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #ea580c;">Penalties Accrued:</MudText>
+                                <MudText Typo="Typo.body2" Style="font-weight: 800; color: #ea580c;">@TotalPenaltiesAccrued.ToString("N2")</MudText>
+                            </div>
+                            <div class="d-flex gap-2 align-baseline">
+                                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #16a34a;">Penalties Paid:</MudText>
+                                <MudText Typo="Typo.body2" Style="font-weight: 800; color: #16a34a;">@TotalPenaltiesPaid.ToString("N2")</MudText>
+                            </div>
+                            <div class="d-flex gap-2 align-baseline">
+                                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #dc2626;">Penalties Outstanding:</MudText>
+                                <MudText Typo="Typo.body2" Style="font-weight: 800; color: #dc2626;">@((TotalPenaltiesAccrued - TotalPenaltiesPaid > 0 ? TotalPenaltiesAccrued - TotalPenaltiesPaid : 0).ToString("N2"))</MudText>
+                            </div>
+                        </div>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudPaper>
+
+        @* ========================================================================= *@
+        @* 3. THIRD SECTION: REPAYMENTS & INSTALLMENTS TABLE                         *@
+        @* ========================================================================= *@
+        <MudPaper Elevation="0" Class="pa-5 rounded-xl border" Style="background: #ffffff; border-color: #e2e8f0;">
+            @* Header & Repay Action Button *@
+            <div class="d-flex justify-space-between align-center mb-4">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.FormatListBulleted" Color="Color.Primary" Size="Size.Medium" />
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1B2559;">
+                        Repayments
+                    </MudText>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Style="font-weight: 700; font-size: 0.75rem;">
+                        @_installmentRows.Count Installment(s)
+                    </MudChip>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Medium"
+                               StartIcon="@Icons.Material.Filled.Print" OnClick="PrintScheduleDialog"
+                               Style="text-transform: none; font-weight: 700; border-radius: 8px;">
+                        Print Schedule
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Medium"
+                               StartIcon="@Icons.Material.Filled.Add" OnClick="OpenGeneralRepayDialog"
+                               Style="background: #1976d2; color: white; text-transform: none; font-weight: 700; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(25, 118, 210, 0.3);">
+                        + Repay
+                    </MudButton>
+                </div>
+            </div>
+
+            @* Table of Installments *@
+            @if (!_installmentRows.Any())
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-4">
+                    No installment schedule generated for this loan.
+                </MudAlert>
+            }
+            else
+            {
+                <MudTable Items="@_installmentRows" Hover="true" Elevation="0" Class="border rounded-lg" Style="border-color: #f1f5f9;">
+                    <HeaderContent>
+                        <MudTh Style="width: 40px;">
+                            <MudCheckBox T="bool" Value="@_selectAllChecked" ValueChanged="OnSelectAllChanged" Dense="true" Color="Color.Primary" />
+                        </MudTh>
+                        <MudTh>Amount Disbursed / Due</MudTh>
+                        <MudTh Style="text-align: right;">Principal</MudTh>
+                        <MudTh Style="text-align: right;">Interest</MudTh>
+                        <MudTh Style="text-align: right;">Penalty</MudTh>
+                        <MudTh Style="text-align: right;">Outstanding</MudTh>
+                        <MudTh Style="text-align: right;">Amount Paid</MudTh>
+                        <MudTh>Date</MudTh>
+                        <MudTh Style="text-align: center;">Status</MudTh>
+                        <MudTh Style="text-align: center;">Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>
+                            <MudCheckBox T="bool" Value="@context.IsSelected" ValueChanged="@((val) => OnRowSelectionChanged(context, val))" Dense="true" Color="Color.Primary" />
+                        </MudTd>
+                        <MudTd>
+                            <div class="d-flex flex-column">
+                                <span style="font-weight: 700; color: #0f172a;">@context.ScheduledPayment.ToString("N2")</span>
+                                <span style="font-size: 0.75rem; color: #64748b;">Installment #@context.InstallmentNo</span>
+                            </div>
+                        </MudTd>
+                        <MudTd Style="text-align: right;">
+                            <div class="d-flex flex-column">
+                                <span style="font-weight: 600; color: #334155;">@context.PrincipalScheduled.ToString("N2")</span>
+                                <span style="font-size: 0.75rem; color: #16a34a;">Paid: @context.PrincipalPaid.ToString("N2")</span>
+                            </div>
+                        </MudTd>
+                        <MudTd Style="text-align: right;">
+                            <div class="d-flex flex-column">
+                                <span style="font-weight: 600; color: #0284c7;">@context.InterestScheduled.ToString("N2")</span>
+                                <span style="font-size: 0.75rem; color: #16a34a;">Paid: @context.InterestPaid.ToString("N2")</span>
+                            </div>
+                        </MudTd>
+                        <MudTd Style="text-align: right;">
+                            <div class="d-flex flex-column">
+                                <span style="font-weight: 600; color: @(context.PenaltyScheduled > 0 ? "#ea580c" : "#94a3b8");">
+                                    @(context.PenaltyScheduled > 0 ? context.PenaltyScheduled.ToString("N2") : "0.00")
+                                </span>
+                                @if (context.PenaltyPaid > 0)
+                                {
+                                    <span style="font-size: 0.75rem; color: #16a34a;">Paid: @context.PenaltyPaid.ToString("N2")</span>
+                                }
+                            </div>
+                        </MudTd>
+                        <MudTd Style="@($"text-align: right; font-weight: 800; color: {(context.RemainingBalance > 0 ? "#dc2626" : "#16a34a")};")">
+                            @context.RemainingBalance.ToString("N2")
+                        </MudTd>
+                        <MudTd Style="text-align: right; font-weight: 800; color: #16a34a;">
+                            @context.AmountPaid.ToString("N2")
+                        </MudTd>
+                        <MudTd>
+                            <div class="d-flex flex-column">
+                                <span style="font-weight: 600; color: #0f172a;">@context.DueDate.ToString("yyyy-MM-dd")</span>
+                                @if (context.LastPaymentDate.HasValue)
+                                {
+                                    <span style="font-size: 0.75rem; color: #64748b;">Paid on: @context.LastPaymentDate.Value.ToString("yyyy-MM-dd")</span>
+                                }
+                            </div>
+                        </MudTd>
+                        <MudTd Style="text-align: center;">
+                            <MudChip T="string" 
+                                     Color="@GetInstallmentStatusColor(context.StatusFlag)" 
+                                     Size="Size.Small" Variant="Variant.Filled"
+                                     Style="font-weight: 800; font-size: 0.75rem; padding: 0 10px; border-radius: 12px;">
+                                @context.StatusFlag
+                            </MudChip>
+                        </MudTd>
+                        <MudTd Style="text-align: center;">
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                                <MudMenuItem Icon="@Icons.Material.Filled.Info" OnClick="@(() => OpenInstallmentDetailModal(context))">
+                                    View Breakdown & Details
+                                </MudMenuItem>
+                                @if (context.StatusFlag != "Approved" && context.StatusFlag != "Paid")
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Payment" IconColor="Color.Primary" OnClick="@(() => OpenInstallmentPayDialog(context))">
+                                        Pay Installment
+                                    </MudMenuItem>
+                                }
+                                @if (context.LinkedPayments.Any())
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Receipt" IconColor="Color.Success" OnClick="@(() => PrintPaymentReceipt(context.LinkedPayments.Last()))">
+                                        Print Latest Receipt
+                                    </MudMenuItem>
+                                }
+                            </MudMenu>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudPaper>
+
+        @* ========================================================================= *@
+        @* 4. PAYMENT TRANSACTIONS BREAKDOWN LOG                                     *@
+        @* ========================================================================= *@
+        <MudPaper Elevation="0" Class="pa-5 mt-6 rounded-xl border" Style="background: #ffffff; border-color: #e2e8f0;">
+            <div class="d-flex justify-space-between align-center mb-3">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Color="Color.Primary" Size="Size.Medium" />
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1B2559;">
+                        Recorded Payment Transactions
+                    </MudText>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info" Style="font-weight: 700;">
+                        @_disbursementPayments.Count Transaction(s)
+                    </MudChip>
+                </div>
+            </div>
+
+            @if (!_disbursementPayments.Any())
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-2">
+                    No payment transactions recorded yet for this loan.
+                </MudAlert>
+            }
+            else
+            {
+                <MudTable Items="@_disbursementPayments" Hover="true" Dense="true" Elevation="0" Class="border rounded-lg">
+                    <HeaderContent>
+                        <MudTh>Tx ID</MudTh>
+                        <MudTh>Payment Date</MudTh>
+                        <MudTh>Account</MudTh>
+                        <MudTh>Payment Type</MudTh>
+                        <MudTh Style="text-align: right;">Principal Paid</MudTh>
+                        <MudTh Style="text-align: right;">Interest Paid</MudTh>
+                        <MudTh Style="text-align: right;">Penalty Paid</MudTh>
+                        <MudTh Style="text-align: right;">Total Amount</MudTh>
+                        <MudTh Style="text-align: center;">Proof</MudTh>
+                        <MudTh Style="text-align: center;">Status</MudTh>
+                        <MudTh Style="text-align: center;">Receipt</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd><b>#@context.Id.ToString("D6")</b></MudTd>
+                        <MudTd>@context.PaymentDate.ToString("yyyy-MM-dd")</MudTd>
+                        <MudTd>@(context.Account?.Name ?? "N/A")</MudTd>
+                        <MudTd>@(context.PaymentType?.PaymentTypeName ?? "Standard")</MudTd>
+                        <MudTd Style="text-align: right; color: #16a34a; font-weight: 600;">@context.PrincipalPaid.ToString("N2")</MudTd>
+                        <MudTd Style="text-align: right; color: #0284c7; font-weight: 600;">@context.InterestPaid.ToString("N2")</MudTd>
+                        <MudTd Style="text-align: right; color: #ea580c; font-weight: 600;">@(context.PenaltyPaid > 0 ? context.PenaltyPaid.ToString("N2") : "-")</MudTd>
+                        <MudTd Style="text-align: right; font-weight: 800; color: #1B2559;">@context.Amount.ToString("N2")</MudTd>
+                        <MudTd Style="text-align: center;">
+                            @if (context.ProofOfPayment != null && context.ProofOfPayment.Length > 0)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.AttachFile"
+                                           OnClick="@(() => DownloadProofFile(context))">
+                                    @(string.IsNullOrEmpty(context.ProofOfPaymentFileName) ? "Download" : context.ProofOfPaymentFileName)
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <span style="color: #94a3b8; font-size: 0.8rem;">None</span>
+                            }
+                        </MudTd>
+                        <MudTd Style="text-align: center;">
+                            <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Error)" Variant="Variant.Filled" Style="font-weight: 700; font-size: 0.7rem;">
+                                @(context.IsActive ? "Approved" : "Void")
+                            </MudChip>
+                        </MudTd>
+                        <MudTd Style="text-align: center;">
+                            <MudIconButton Icon="@Icons.Material.Filled.Print" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PrintPaymentReceipt(context))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudPaper>
+    }
+</MudContainer>
+
+@* ========================================================================= *@
+@* 5. INSTALLMENT DETAILS MODAL / DIALOG                                     *@
+@* ========================================================================= *@
+<MudDialog @bind-Visible="_isDetailModalOpen" Options="_modalOptions" Style="border-radius: 16px; max-width: 650px; overflow: hidden;">
+    <TitleContent>
+        <div class="d-flex align-center gap-3 pa-4" style="background: #ffffff; border-bottom: 1px solid #e2e8f0; margin: -16px -24px 0 -24px;">
+            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Style="height: 44px; width: 44px;">
+                <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" />
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1B2559;">
+                    Installment #@(_selectedModalRow?.InstallmentNo) Breakdown
+                </MudText>
+                <MudText Typo="Typo.caption" Style="color: #64748b; font-weight: 600;">
+                    Scheduled Due Date: @(_selectedModalRow?.DueDate.ToString("yyyy-MM-dd"))
+                </MudText>
+            </div>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedModalRow != null)
+        {
+            <div class="py-3">
+                @* Status & Summary Banner *@
+                <div class="d-flex justify-space-between align-center pa-3 mb-4 rounded-lg" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div>
+                        <MudText Typo="Typo.caption" Style="color: #64748b; font-weight: 700; text-transform: uppercase;">Installment Status</MudText>
+                        <div>
+                            <MudChip T="string" Color="@GetInstallmentStatusColor(_selectedModalRow.StatusFlag)" Size="Size.Small" Variant="Variant.Filled" Style="font-weight: 800;">
+                                @_selectedModalRow.StatusFlag
+                            </MudChip>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <MudText Typo="Typo.caption" Style="color: #64748b; font-weight: 700; text-transform: uppercase;">Total Installment Amount</MudText>
+                        <MudText Typo="Typo.h6" Style="font-weight: 900; color: #1B2559;">@_selectedModalRow.ScheduledPayment.ToString("N2")</MudText>
+                    </div>
+                </div>
+
+                @* Granular Breakdown Grid *@
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 800; color: #1e293b; margin-bottom: 8px;">Detailed Component Breakdown</MudText>
+                
+                <MudPaper Elevation="0" Class="pa-3 rounded-lg border mb-4" Style="background: white; border-color: #e2e8f0;">
+                    <div class="d-flex justify-space-between align-center py-2" style="border-bottom: 1px dashed #e2e8f0;">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.AccountBalance" Size="Size.Small" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #334155;">Principal Component:</MudText>
+                        </div>
+                        <div class="text-right">
+                            <span style="font-weight: 700; color: #0f172a;">@_selectedModalRow.PrincipalScheduled.ToString("N2")</span>
+                            <div style="font-size: 0.75rem; color: #16a34a;">Paid: @_selectedModalRow.PrincipalPaid.ToString("N2")</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-space-between align-center py-2" style="border-bottom: 1px dashed #e2e8f0;">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Info" />
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #334155;">Interest Component:</MudText>
+                        </div>
+                        <div class="text-right">
+                            <span style="font-weight: 700; color: #0284c7;">@_selectedModalRow.InterestScheduled.ToString("N2")</span>
+                            <div style="font-size: 0.75rem; color: #16a34a;">Paid: @_selectedModalRow.InterestPaid.ToString("N2")</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-space-between align-center py-2" style="border-bottom: 1px dashed #e2e8f0;">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Color="Color.Warning" />
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #334155;">Late Penalty Component:</MudText>
+                        </div>
+                        <div class="text-right">
+                            <span style="font-weight: 700; color: @(_selectedModalRow.PenaltyScheduled > 0 ? "#ea580c" : "#94a3b8");">
+                                @(_selectedModalRow.PenaltyScheduled > 0 ? _selectedModalRow.PenaltyScheduled.ToString("N2") : "0.00")
+                            </span>
+                            @if (_selectedModalRow.PenaltyPaid > 0)
+                            {
+                                <div style="font-size: 0.75rem; color: #16a34a;">Paid: @_selectedModalRow.PenaltyPaid.ToString("N2")</div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-space-between align-center py-2" style="background: #f8fafc; margin: 4px -12px -12px -12px; padding: 10px 12px; border-top: 1px solid #e2e8f0; border-radius: 0 0 8px 8px;">
+                        <MudText Typo="Typo.body2" Style="font-weight: 800; color: #0f172a;">Remaining Balance for this Installment:</MudText>
+                        <MudText Typo="Typo.body1" Style="@($"font-weight: 900; color: {(_selectedModalRow.RemainingBalance > 0 ? "#dc2626" : "#16a34a")};")">
+                            @_selectedModalRow.RemainingBalance.ToString("N2")
+                        </MudText>
+                    </div>
+                </MudPaper>
+
+                @* Linked Payments List *@
+                @if (_selectedModalRow.LinkedPayments.Any())
+                {
+                    <MudText Typo="Typo.subtitle2" Style="font-weight: 800; color: #1e293b; margin-bottom: 8px;">Allocated Payments</MudText>
+                    <MudTable Items="@_selectedModalRow.LinkedPayments" Hover="true" Dense="true" Elevation="0" Class="border rounded-lg mb-2">
+                        <HeaderContent>
+                            <MudTh>Tx ID</MudTh>
+                            <MudTh>Date</MudTh>
+                            <MudTh>Method</MudTh>
+                            <MudTh Style="text-align: right;">Amount</MudTh>
+                            <MudTh Style="text-align: center;">Action</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="p">
+                            <MudTd><b>#@p.Id.ToString("D6")</b></MudTd>
+                            <MudTd>@p.PaymentDate.ToString("yyyy-MM-dd")</MudTd>
+                            <MudTd>@(p.PaymentType?.PaymentTypeName ?? "Cash/Bank")</MudTd>
+                            <MudTd Style="text-align: right; font-weight: 800; color: #16a34a;">@p.Amount.ToString("N2")</MudTd>
+                            <MudTd Style="text-align: center;">
+                                <MudIconButton Icon="@Icons.Material.Filled.Receipt" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PrintPaymentReceipt(p))" />
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_selectedModalRow != null && _selectedModalRow.StatusFlag != "Approved" && _selectedModalRow.StatusFlag != "Paid")
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Payment" OnClick="@(() => { _isDetailModalOpen = false; OpenInstallmentPayDialog(_selectedModalRow); })">
+                Pay Now
+            </MudButton>
+        }
+        <MudButton OnClick="@(() => _isDetailModalOpen = false)" Variant="Variant.Outlined" Color="Color.Secondary">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    [Parameter] public int? DisbursementId { get; set; }
+
+    private bool _isLoading = true;
+    private Disbursement? _disbursement;
+    private Borrower? _borrower;
+    private List<Disbursement> _allDisbursements = new();
+    private List<Payment> _disbursementPayments = new();
+    private List<Penality> _disbursementPenalties = new();
+    private List<InstallmentDetailRow> _installmentRows = new();
+
+    private int _selectedDisbursementId = 0;
+    private bool _selectAllChecked = false;
+
+    // Modal state
+    private bool _isDetailModalOpen = false;
+    private InstallmentDetailRow? _selectedModalRow;
+    private DialogOptions _modalOptions = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+    private List<BreadcrumbItem> _breadcrumbItems = new()
+    {
+        new BreadcrumbItem("Payments", href: "/Payments"),
+        new BreadcrumbItem("Loan Installment Details", href: null, disabled: true)
+    };
+
+    public class InstallmentDetailRow
+    {
+        public int InstallmentNo { get; set; }
+        public DateTime DueDate { get; set; }
+        public DateTime? LastPaymentDate { get; set; }
+        public decimal PrincipalScheduled { get; set; }
+        public decimal PrincipalPaid { get; set; }
+        public decimal InterestScheduled { get; set; }
+        public decimal InterestPaid { get; set; }
+        public decimal PenaltyScheduled { get; set; }
+        public decimal PenaltyPaid { get; set; }
+        public decimal ScheduledPayment { get; set; }
+        public decimal AmountPaid { get; set; }
+        public decimal RemainingBalance { get; set; }
+        public string StatusFlag { get; set; } = "Pending";
+        public bool IsSelected { get; set; }
+        public List<Payment> LinkedPayments { get; set; } = new();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        int targetId = DisbursementId ?? Id ?? 0;
+        if (targetId > 0 && (_disbursement == null || _disbursement.Id != targetId))
+        {
+            _selectedDisbursementId = targetId;
+            await LoadSpecificDisbursement(targetId);
+        }
+    }
+
+    private async Task LoadAllData()
+    {
+        _isLoading = true;
+        try
+        {
+            using var db = await DbContextFactory.CreateDbContextAsync();
+            
+            _allDisbursements = await db.Disbursements
+                .AsNoTracking()
+                .Include(d => d.LoanApplication)
+                    .ThenInclude(la => la.Borrower)
+                .Include(d => d.LoanApplication)
+                    .ThenInclude(la => la.LoanProductSetting)
+                        .ThenInclude(lps => lps.LoanProduct)
+                .Include(d => d.PaymentModality)
+                .Include(d => d.Account)
+                .Include(d => d.Person)
+                .OrderByDescending(d => d.StartDate)
+                .ToListAsync();
+
+            int targetId = DisbursementId ?? Id ?? 0;
+            if (targetId == 0 && _allDisbursements.Any())
+            {
+                targetId = _allDisbursements.First().Id;
+            }
+
+            if (targetId > 0)
+            {
+                await LoadSpecificDisbursement(targetId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading loan details: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadSpecificDisbursement(int disbursementId)
+    {
+        using var db = await DbContextFactory.CreateDbContextAsync();
+
+        _disbursement = await db.Disbursements
+            .AsNoTracking()
+            .Include(d => d.LoanApplication)
+                .ThenInclude(la => la.Borrower)
+            .Include(d => d.LoanApplication)
+                .ThenInclude(la => la.LoanProductSetting)
+                    .ThenInclude(lps => lps.LoanProduct)
+            .Include(d => d.PaymentModality)
+            .Include(d => d.Account)
+            .Include(d => d.Person)
+            .FirstOrDefaultAsync(d => d.Id == disbursementId || d.LoanApplicationId == disbursementId);
+
+        if (_disbursement != null)
+        {
+            _selectedDisbursementId = _disbursement.Id;
+            _borrower = _disbursement.LoanApplication?.Borrower;
+
+            _disbursementPayments = await db.Payments
+                .AsNoTracking()
+                .Include(p => p.Account)
+                .Include(p => p.PaymentType)
+                .Where(p => p.DisbursementId == _disbursement.Id && p.IsActive)
+                .OrderBy(p => p.PaymentDate)
+                .ToListAsync();
+
+            _disbursementPenalties = await db.Penalties
+                .AsNoTracking()
+                .Where(p => p.LoanApplicationId == _disbursement.LoanApplicationId)
+                .ToListAsync();
+
+            GenerateInstallmentRows();
+        }
+        else
+        {
+            _installmentRows.Clear();
+            _disbursementPayments.Clear();
+            _disbursementPenalties.Clear();
+        }
+    }
+
+    private void GenerateInstallmentRows()
+    {
+        _installmentRows.Clear();
+        if (_disbursement == null || _disbursement.TotalInstallments <= 0) return;
+
+        int totalInst = _disbursement.TotalInstallments;
+        decimal principalPerInst = _disbursement.PrincipalOffered > 0 ? _disbursement.PrincipalOffered / totalInst : 0;
+        decimal totalInterest = _disbursement.PrincipalOffered * (_disbursement.InterestRate / 100m);
+        decimal interestPerInst = totalInterest > 0 ? totalInterest / totalInst : 0;
+        decimal totalPenaltiesOnLoan = _disbursementPenalties.Sum(p => p.Amount);
+        decimal penaltyPerInst = totalPenaltiesOnLoan > 0 ? totalPenaltiesOnLoan / totalInst : 0;
+
+        decimal scheduledPerInst = _disbursement.Amount > 0 ? _disbursement.Amount / totalInst : (principalPerInst + interestPerInst + penaltyPerInst);
+
+        decimal availablePaidPool = _disbursementPayments.Sum(p => p.Amount);
+
+        for (int i = 0; i < totalInst; i++)
+        {
+            DateTime dueDate = _disbursement.PaymentModality?.Mode?.ToLower() switch
+            {
+                "daily" => _disbursement.StartDate.AddDays(i + 1),
+                "weekly" => _disbursement.StartDate.AddDays((i + 1) * 7),
+                "monthly" => _disbursement.StartDate.AddMonths(i + 1),
+                "yearly" => _disbursement.StartDate.AddYears(i + 1),
+                _ => _disbursement.StartDate.AddMonths(i + 1)
+            };
+
+            decimal amountPaidForInst = 0;
+            if (availablePaidPool >= scheduledPerInst)
+            {
+                amountPaidForInst = scheduledPerInst;
+                availablePaidPool -= scheduledPerInst;
+            }
+            else if (availablePaidPool > 0)
+            {
+                amountPaidForInst = availablePaidPool;
+                availablePaidPool = 0;
+            }
+
+            decimal principalPaidForInst = Math.Min(principalPerInst, amountPaidForInst);
+            decimal interestPaidForInst = Math.Min(interestPerInst, Math.Max(0, amountPaidForInst - principalPaidForInst));
+            decimal penaltyPaidForInst = Math.Min(penaltyPerInst, Math.Max(0, amountPaidForInst - principalPaidForInst - interestPaidForInst));
+
+            decimal instRemaining = scheduledPerInst - amountPaidForInst;
+            if (instRemaining < 0) instRemaining = 0;
+
+            string status = "Pending";
+            if (amountPaidForInst >= scheduledPerInst)
+            {
+                status = "Approved"; // Matches screenshot 'Approved' badge
+            }
+            else if (amountPaidForInst > 0)
+            {
+                status = "PartiallyPaid";
+            }
+            else if (DateTime.Today > dueDate.Date)
+            {
+                status = "Overdue";
+            }
+            else
+            {
+                status = "Pending";
+            }
+
+            var linkedTx = _disbursementPayments
+                .Skip(i)
+                .Take(1)
+                .ToList();
+
+            DateTime? lastDate = linkedTx.Any() ? linkedTx.Last().PaymentDate : (amountPaidForInst > 0 ? _disbursement.StartDate : null);
+
+            _installmentRows.Add(new InstallmentDetailRow
+            {
+                InstallmentNo = i + 1,
+                DueDate = dueDate,
+                LastPaymentDate = lastDate,
+                PrincipalScheduled = principalPerInst,
+                PrincipalPaid = principalPaidForInst,
+                InterestScheduled = interestPerInst,
+                InterestPaid = interestPaidForInst,
+                PenaltyScheduled = penaltyPerInst,
+                PenaltyPaid = penaltyPaidForInst,
+                ScheduledPayment = scheduledPerInst,
+                AmountPaid = amountPaidForInst,
+                RemainingBalance = instRemaining,
+                StatusFlag = status,
+                LinkedPayments = linkedTx,
+                IsSelected = false
+            });
+        }
+    }
+
+    private async Task OnDisbursementSelected(int id)
+    {
+        if (id > 0)
+        {
+            _selectedDisbursementId = id;
+            NavigationManager.NavigateTo($"/PaymentDetail/{id}");
+            await LoadSpecificDisbursement(id);
+        }
+    }
+
+    // ==========================================
+    // PROPERTIES FOR HEADERS & SUMMARIES
+    // ==========================================
+    private string TenantOrganizationName
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(_disbursement?.Person?.FirstName) || !string.IsNullOrWhiteSpace(_disbursement?.Person?.LastName))
+                return $"{_disbursement?.Person?.FirstName} {_disbursement?.Person?.LastName}".Trim().ToUpper();
+            if (!string.IsNullOrWhiteSpace(UserContext.FullName))
+                return UserContext.FullName.ToUpper();
+            return "TUKOMBERE";
+        }
+    }
+
+    private string BorrowerDisplayName
+    {
+        get
+        {
+            if (_borrower == null) return "Unknown";
+            if (!string.IsNullOrEmpty(_borrower.CompanyName)) return _borrower.CompanyName.ToUpper();
+            return $"{_borrower.FirstName} {_borrower.LastName}".Trim().ToUpper();
+        }
+    }
+
+    private string BorrowerIdentityNo
+    {
+        get
+        {
+            if (_borrower == null) return "N/A";
+            if (!string.IsNullOrEmpty(_borrower.IdentificationNumber)) return _borrower.IdentificationNumber;
+            if (!string.IsNullOrEmpty(_borrower.TIN)) return _borrower.TIN;
+            return "N/A";
+        }
+    }
+
+    private decimal DisbursedAmount => _disbursement?.PrincipalOffered ?? 0;
+    
+    private decimal TotalPrincipalAmount => _disbursement?.Amount ?? 0;
+
+    private decimal TotalInterestAmount => (_disbursement?.PrincipalOffered ?? 0) * ((_disbursement?.InterestRate ?? 0) / 100m);
+
+    private decimal TotalPaid => _disbursementPayments.Sum(p => p.Amount);
+
+    private decimal TotalOutstandingBalance
+    {
+        get
+        {
+            if (_disbursement == null) return 0;
+            decimal diff = _disbursement.Amount - TotalPaid;
+            return diff > 0 ? diff : 0;
+        }
+    }
+
+    private decimal TotalPrincipalPaid
+    {
+        get
+        {
+            decimal sum = _disbursementPayments.Sum(p => p.PrincipalPaid);
+            if (sum > 0) return sum;
+            // Fallback if payment didn't break down principal explicitly
+            decimal paid = TotalPaid;
+            decimal totalInterest = TotalInterestAmount;
+            return paid > totalInterest ? paid - totalInterest : paid;
+        }
+    }
+
+    private decimal TotalInterestPaid
+    {
+        get
+        {
+            decimal sum = _disbursementPayments.Sum(p => p.InterestPaid);
+            if (sum > 0) return sum;
+            decimal paid = TotalPaid;
+            decimal totalInterest = TotalInterestAmount;
+            return paid >= totalInterest ? totalInterest : paid;
+        }
+    }
+
+    private decimal TotalPenaltiesAccrued => _disbursementPenalties.Sum(p => p.Amount);
+    private decimal TotalPenaltiesPaid => _disbursementPayments.Sum(p => p.PenaltyPaid);
+
+    private string GetOverallLoanStatusText()
+    {
+        if (_disbursement == null) return "Unknown";
+        if (TotalOutstandingBalance <= 0.01m && TotalPaid > 0) return "FullyPaid";
+        if (TotalPaid > 0) return "PartiallyPaid";
+        if (DateTime.Today > _disbursement.EndDate.Date) return "Overdue";
+        return "Active";
+    }
+
+    private Color GetOverallLoanStatusColor()
+    {
+        return GetOverallLoanStatusText() switch
+        {
+            "FullyPaid" => Color.Success,
+            "PartiallyPaid" => Color.Info,
+            "Overdue" => Color.Error,
+            "Active" => Color.Primary,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetInstallmentStatusColor(string status)
+    {
+        return status switch
+        {
+            "Approved" or "Paid" or "FullyPaid" => Color.Success,
+            "PartiallyPaid" or "Partial" => Color.Warning,
+            "Overdue" => Color.Error,
+            "Pending" => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    // ==========================================
+    // SELECTION & ACTIONS
+    // ==========================================
+    private void OnSelectAllChanged(bool isChecked)
+    {
+        _selectAllChecked = isChecked;
+        foreach (var row in _installmentRows)
+        {
+            row.IsSelected = isChecked;
+        }
+    }
+
+    private void OnRowSelectionChanged(InstallmentDetailRow row, bool isChecked)
+    {
+        row.IsSelected = isChecked;
+        _selectAllChecked = _installmentRows.All(r => r.IsSelected);
+    }
+
+    private void OpenInstallmentDetailModal(InstallmentDetailRow row)
+    {
+        _selectedModalRow = row;
+        _isDetailModalOpen = true;
+    }
+
+    private async Task OpenInstallmentPayDialog(InstallmentDetailRow row)
+    {
+        if (_disbursement == null) return;
+
+        var parameters = new DialogParameters
+        {
+            { "DisbursementId", _disbursement.Id },
+            { "InstallmentNo", row.InstallmentNo },
+            { "ScheduledAmount", row.ScheduledPayment },
+            { "DueDate", row.DueDate },
+            { "PenaltyRate", _disbursement.LoanApplication?.LoanProductSetting?.PenalityRate ?? 0 },
+            { "StatusFlag", row.StatusFlag },
+            { "AmountPaid", row.AmountPaid }
+        };
+
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true, BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<InstallmentPaymentDialog>("Installment Payment", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadSpecificDisbursement(_disbursement.Id);
+            Snackbar.Add("Installment payment recorded successfully.", Severity.Success);
+        }
+    }
+
+    private async Task OpenGeneralRepayDialog()
+    {
+        if (_disbursement == null) return;
+
+        // Find the first pending or partial installment
+        var targetInst = _installmentRows.FirstOrDefault(r => r.StatusFlag != "Approved" && r.StatusFlag != "Paid") ?? _installmentRows.LastOrDefault();
+        if (targetInst != null)
+        {
+            await OpenInstallmentPayDialog(targetInst);
+        }
+        else
+        {
+            var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true, BackdropClick = false };
+            var dialog = await DialogService.ShowAsync<CreatePayment>("Record Payment", options);
+            var result = await dialog.Result;
+            if (!result.Canceled)
+            {
+                await LoadSpecificDisbursement(_disbursement.Id);
+            }
+        }
+    }
+
+    private async Task PrintScheduleDialog()
+    {
+        if (_disbursement == null) return;
+
+        var bName = !string.IsNullOrEmpty(_disbursement.LoanApplication?.Borrower?.CompanyName)
+            ? _disbursement.LoanApplication.Borrower.CompanyName
+            : $"{_disbursement.LoanApplication?.Borrower?.FirstName} {_disbursement.LoanApplication?.Borrower?.LastName}".Trim();
+
+        var parameters = new DialogParameters
+        {
+            { "Disbursement", _disbursement },
+            { "BorrowerName", bName },
+            { "AppCode", _disbursement.LoanApplication?.ApplicationCode ?? $"#APP-{_disbursement.LoanApplicationId}" }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<RepaymentSchedulePrintDialog>("Loan Repayment Schedule", parameters, options);
+    }
+
+    private async Task PrintPaymentReceipt(Payment payment)
+    {
+        var totalPaid = _disbursementPayments.Where(p => p.IsActive).Sum(p => p.Amount);
+        var parameters = new DialogParameters
+        {
+            { "Payment", payment },
+            { "TotalPaidPool", totalPaid }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<PaymentReceiptPrintDialog>("Payment Receipt", parameters, options);
+    }
+
+    private async Task DownloadProofFile(Payment payment)
+    {
+        if (payment.ProofOfPayment == null || payment.ProofOfPayment.Length == 0) return;
+        try
+        {
+            string fileName = !string.IsNullOrEmpty(payment.ProofOfPaymentFileName) ? payment.ProofOfPaymentFileName : $"payment_proof_{payment.Id}.pdf";
+            string base64 = Convert.ToBase64String(payment.ProofOfPayment);
+            string url = $"data:application/octet-stream;base64,{base64}";
+            await JSRuntime.InvokeVoidAsync("open", url, "_blank");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error viewing proof: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/Payments");
+    }
+}

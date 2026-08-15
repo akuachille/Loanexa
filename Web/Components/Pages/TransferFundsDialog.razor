@@ -1,0 +1,175 @@
+@using Application.DTO
+@using System.ComponentModel.DataAnnotations
+@using Application.Interfaces
+@using Domain.Entities
+@using MudBlazor
+
+@inject IAccountService AccountService
+@inject ISnackbar Snackbar
+
+<MudDialog Style="overflow:hidden;">
+    <DialogContent>
+        <!-- ══════════ HEADER BANNER ══════════ -->
+        <MudPaper Elevation="0"
+                  Style="background: linear-gradient(135deg, #4318FF );
+                         padding:14px 18px; margin-bottom:16px;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.SwapHoriz"
+                         Style="color:white; font-size:1.6rem;" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle1"
+                             Style="color:white; font-weight:700; line-height:1.2;">
+                        Transfer Funds
+                    </MudText>
+                    <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,0.80);">
+                        Move money between your internal accounts
+                    </MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        <!-- ══════════ FORM ══════════ -->
+        <EditForm Model="Model" OnValidSubmit="OnValidSubmit">
+            <DataAnnotationsValidator />
+
+            <MudGrid Spacing="2" Class="align-items-center">
+                <MudItem xs="12">
+                    <MudSelect T="int" Label="From Account"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Placeholder="--Select Source Account--"
+                               @bind-Value="Model.FromAccountId"
+                               For="@(() => Model.FromAccountId)">
+                        <MudSelectItem T="int" Value="0">--Select Source Account--</MudSelectItem>
+                        @if (_accounts != null)
+                        {
+                            foreach (var account in _accounts)
+                            {
+                                <MudSelectItem T="int" Value="@account.Id">
+                                    @account.Name <span style="color:gray; font-size: 0.8rem;">(@account.Balance.ToString("N2"))</span>
+                                </MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudSelect T="int" Label="To Account"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Placeholder="--Select Destination Account--"
+                               @bind-Value="Model.ToAccountId"
+                               For="@(() => Model.ToAccountId)">
+                        <MudSelectItem T="int" Value="0">--Select Destination Account--</MudSelectItem>
+                        @if (_accounts != null)
+                        {
+                            foreach (var account in _accounts)
+                            {
+                                // Prevent selecting the same account
+                                if (Model.FromAccountId != account.Id)
+                                {
+                                    <MudSelectItem T="int" Value="@account.Id">
+                                        @account.Name <span style="color:gray; font-size: 0.8rem;">(@account.Balance.ToString("N2"))</span>
+                                    </MudSelectItem>
+                                }
+                            }
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudNumericField Label="Amount"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     @bind-Value="Model.Amount"
+                                     For="@(() => Model.Amount)"
+                                     Min="0.01m" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField Label="Notes (Optional)"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  @bind-Value="Model.Description"
+                                  For="@(() => Model.Description)" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               FullWidth="true"
+                               ButtonType="ButtonType.Submit"
+                               Disabled="@_isProcessing"
+                               Style="height: 40px; font-weight: bold; margin-top:10px; margin-bottom:5px;">
+                        @(_isProcessing ? "Processing..." : "Transfer Funds")
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    public class TransferModel
+    {
+        [Required(ErrorMessage = "Please select a source account.")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a valid source account.")]
+        public int FromAccountId { get; set; }
+
+        [Required(ErrorMessage = "Please select a destination account.")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a valid destination account.")]
+        public int ToAccountId { get; set; }
+
+        [Required(ErrorMessage = "Please enter an amount to transfer.")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Transfer amount must be greater than zero.")]
+        public decimal Amount { get; set; }
+
+        public string Description { get; set; } = "Internal transfer";
+    }
+
+    private TransferModel Model { get; set; } = new();
+    private List<Account> _accounts = new();
+    private bool _isProcessing = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _accounts = await AccountService.GetAllAccountsAsync() ?? new List<Account>();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error Loading Accounts", Severity.Error);
+        }
+    }
+
+    private async Task OnValidSubmit()
+    {
+        if (Model.FromAccountId == Model.ToAccountId)
+        {
+            Snackbar.Add("Cannot transfer funds to the same account.", Severity.Warning);
+            return;
+        }
+
+        _isProcessing = true;
+        try
+        {
+            await AccountService.TransferFundsAsync(Model.FromAccountId, Model.ToAccountId, Model.Amount, Model.Description);
+            Snackbar.Add("Funds transferred successfully!", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Transfer failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+}

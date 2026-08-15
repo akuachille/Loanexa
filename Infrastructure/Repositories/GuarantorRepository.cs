@@ -19,29 +19,31 @@ namespace Infrastructure.Repositories
          _contextFactory = contextFactory;
             _userContext = userContext;
         }
-        public  async Task<List<Guarantor>> GetAllGuarantorsAsync()
+        public async Task<List<Guarantor>> GetAllGuarantorsAsync()
         {
-         if (_userContext.Id == null)
+            if (_userContext.Id == null)
             {
                 return new List<Guarantor>();
             }
-        using var dbContext = await _contextFactory.CreateDbContextAsync();
-        return await dbContext.Guarantors
-            .Include(a => a.GuarantorType)
-            .Include(a => a.LoanApplication)
-            .Where(a => a.PersonId == _userContext.PersonId)
-            .OrderByDescending(x => x.Id).ToListAsync();
+            using var dbContext = await _contextFactory.CreateDbContextAsync();
+            return await dbContext.Guarantors
+                .AsNoTracking()
+                .Include(a => a.GuarantorType)
+                .Include(a => a.LoanApplication)
+                .Where(a => a.PersonId == _userContext.PersonId)
+                .OrderByDescending(x => x.Id).ToListAsync();
         }
-        public async Task <Guarantor> GetGuarantorById(int Id)
+        public async Task<Guarantor?> GetGuarantorById(int Id)
         {
             using var dbContext = await _contextFactory.CreateDbContextAsync();
-     if (_userContext.Id == null)
-    {
-        return null;
-    }
-        return await dbContext.Guarantors
-       .Where(a => a.PersonId == _userContext.PersonId)
-      .FirstOrDefaultAsync(t => t.Id == Id);
+            if (_userContext.Id == null)
+            {
+                return null;
+            }
+            return await dbContext.Guarantors
+                .AsNoTracking()
+                .Where(a => a.PersonId == _userContext.PersonId)
+                .FirstOrDefaultAsync(t => t.Id == Id);
         }
          public async Task CreateGuarantor(CreateGuarantorDTO guarantorDTO)
         {

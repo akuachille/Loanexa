@@ -26,7 +26,7 @@
                     <MudTd DataLabel="Date">@context.TransactionDate.ToString("yyyy-MM-dd HH:mm")</MudTd>
                     <MudTd DataLabel="Type">
                         <MudChip T="string" Size="Size.Small" Color="@GetChipColor(context.TransactionType)">
-                            @context.TransactionType
+                            @(context.TransactionType == "Process Fee" ? "Processing Fee" : context.TransactionType)
                         </MudChip>
                     </MudTd>
                     <MudTd DataLabel="Description">@context.Description</MudTd>

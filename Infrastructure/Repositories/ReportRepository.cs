@@ -322,7 +322,7 @@ namespace Infrastructure.Repositories
                 .Include(d => d.LoanApplication).ThenInclude(la => la.LoanProductSetting).ThenInclude(lps => lps.LoanProduct)
                 .Include(d => d.PaymentModality)
                 .Include(d => d.Payments)
-                .Where(d => d.IsActive && d.EndDate < DateTime.Now && (d.PersonId == currentPersonId.Value || d.LoanApplication.PersonId == currentPersonId.Value))
+                .Where(d => d.IsActive && (d.PersonId == currentPersonId.Value || d.LoanApplication.PersonId == currentPersonId.Value))
                 .OrderByDescending(x => x.Id)
                 .ToListAsync();
 

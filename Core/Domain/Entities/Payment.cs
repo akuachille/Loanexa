@@ -18,6 +18,8 @@ public class Payment
     public DateTime PaymentDate { get; set; }
     public string? Status { get; set; } = "Completed"; // "Completed", "Partial", "Void"
     public bool IsActive { get; set; }
+    public byte[]? ProofOfPayment { get; set; }
+    public string? ProofOfPaymentFileName { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public int? CreatedBy { get; set; }

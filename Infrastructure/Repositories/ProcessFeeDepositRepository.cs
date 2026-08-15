@@ -16,29 +16,31 @@ namespace Infrastructure.Repositories
          _contextFactory = contextFactory;
          _userContext = userContext;
         }
-        public  async Task<List<ProcessFeeDeposit>> GetAllProcessFeeDepositsAsync()
-        {
-        using var dbContext = await _contextFactory.CreateDbContextAsync();
-        if (_userContext.Id == null)
-        {
-            return new List<ProcessFeeDeposit>();
-        }
-           return await dbContext.ProcessFeeDeposits
-            .Include(a => a.LoanApplication)
-            .Where(a => a.PersonId == _userContext.PersonId)
-            .Include(a => a.Account)
-            .OrderByDescending(x => x.Id).ToListAsync();
-        }
-        public async Task <ProcessFeeDeposit> GetProcessFeeDepositByIdAsync(int Id)
+        public async Task<List<ProcessFeeDeposit>> GetAllProcessFeeDepositsAsync()
         {
             using var dbContext = await _contextFactory.CreateDbContextAsync();
-             if (_userContext.Id == null)
+            if (_userContext.Id == null)
+            {
+                return new List<ProcessFeeDeposit>();
+            }
+            return await dbContext.ProcessFeeDeposits
+                .AsNoTracking()
+                .Include(a => a.LoanApplication)
+                .Where(a => a.PersonId == _userContext.PersonId)
+                .Include(a => a.Account)
+                .OrderByDescending(x => x.Id).ToListAsync();
+        }
+        public async Task<ProcessFeeDeposit?> GetProcessFeeDepositByIdAsync(int Id)
+        {
+            using var dbContext = await _contextFactory.CreateDbContextAsync();
+            if (_userContext.Id == null)
             {
                 return null;
             }
-            return  dbContext.ProcessFeeDeposits
-            .Where(a => a.PersonId == _userContext.PersonId)
-            .FirstOrDefault(t => t.Id == Id);
+            return await dbContext.ProcessFeeDeposits
+                .AsNoTracking()
+                .Where(a => a.PersonId == _userContext.PersonId)
+                .FirstOrDefaultAsync(t => t.Id == Id);
         }
          public async Task CreateProcessFeeDepositAsync(CreateProcessFeeDepositDTO processFeeDepositDTO)
         {

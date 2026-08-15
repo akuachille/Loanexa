@@ -129,7 +129,10 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton Color="Color.Primary" OnClick="Close">Close</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => { MudDialog.Close(); NavigationManager.NavigateTo($"/borrower-detail/{Id}"); })" StartIcon="@Icons.Material.Filled.OpenInNew">
+            Full Profile & Loans Summary
+        </MudButton>
+        <MudButton Color="Color.Default" OnClick="Close">Close</MudButton>
     </DialogActions>
 </MudDialog>
 

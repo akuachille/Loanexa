@@ -7,6 +7,7 @@
 @using Application.Services.Disbursements
 @using Application.Services.PaymentTypes
 @using Application.Services.Accounts
+@using System.IO
 
 @inject IPaymentService PaymentService
 @inject IAccountService AccountService
@@ -89,12 +90,38 @@
                                    Variant="Variant.Outlined" Margin="Margin.Dense"
                                    AdornmentColor="Color.Primary" Required="true" />
                 </MudItem>
+
+                @* --- PROOF OF PAYMENT --- *@
+                <MudItem xs="12">
+                    <MudFileUpload T="IBrowserFile" OnFilesChanged="UploadProofOfPayment">
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.CloudUpload">
+                                Attach Proof of Payment
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+                    @if (!string.IsNullOrEmpty(Model.ProofOfPaymentFileName))
+                    {
+                        <div class="d-flex align-center mt-2">
+                            <MudText Typo="Typo.caption" Color="Color.Success" Class="d-flex align-center gap-1">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+                                @Model.ProofOfPaymentFileName
+                            </MudText>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                           Color="Color.Error" 
+                                           Size="Size.Small" 
+                                           OnClick="CancelProofUpload" />
+                        </div>
+                    }
+                </MudItem>
                 
                 @if (CalculatedPenalty > 0)
                 {
                     <MudItem xs="12">
                         <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Style="border-radius: 8px;">
-                            <b>LATE PENALTY (@PenaltyRate%):</b> @CalculatedPenalty.ToString("n") will be added due to late payment/shortfall.
+                            <b>LATE PENALTY (@PenaltyRate%):</b> @CalculatedPenalty.ToString("n") will be added due to late payment.
                         </MudAlert>
                     </MudItem>
                 }
@@ -143,9 +170,9 @@
     {
         get
         {
-            if (DateTime.Today > DueDate || Shortfall > 0)
+            if (DateTime.Today > DueDate)
             {
-                return Shortfall * (PenaltyRate / 100m);
+                return ExpectedAmountToPay * (PenaltyRate / 100m);
             }
             return 0;
         }
@@ -166,6 +193,33 @@
         Accounts = aTask.Result ?? new(); 
     }
 
+    private async Task UploadProofOfPayment(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            try
+            {
+                long maxFileSize = 1024 * 1024 * 5; // 5MB limit
+                using var stream = file.OpenReadStream(maxFileSize);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                Model.ProofOfPayment = ms.ToArray();
+                Model.ProofOfPaymentFileName = file.Name;
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error reading file: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private void CancelProofUpload()
+    {
+        Model.ProofOfPayment = null;
+        Model.ProofOfPaymentFileName = null;
+    }
+
     private async Task OnValidSubmit()
     {
         if (Model.AccountId == 0 || Model.PaymentTypeId == 0 || Model.Amount <= 0)
@@ -180,8 +234,8 @@
         {
             if (CalculatedPenalty > 0) 
             {
-                Snackbar.Add($"Late payment/Shortfall detected. {PenaltyRate}% Penalty ({CalculatedPenalty:n}) added to loan balance.", Severity.Warning);
-                await PaymentService.CreatePaymentWithPenaltyAsync(Model, Shortfall, CalculatedPenalty);
+                Snackbar.Add($"Late payment detected. {PenaltyRate}% Penalty ({CalculatedPenalty:n}) added to loan balance.", Severity.Warning);
+                await PaymentService.CreatePaymentWithPenaltyAsync(Model, ExpectedAmountToPay, CalculatedPenalty);
             } 
             else 
             {

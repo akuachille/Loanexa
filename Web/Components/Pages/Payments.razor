@@ -6,6 +6,7 @@
 @inject IPaymentService PaymentService
 @inject IDisbursementService DisbursementService
 @inject IDialogService DialogService
+@inject NavigationManager NavigationManager
 
 <MudContainer MaxWidth="MaxWidth.False" Class="mt-8 px-8">
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-6">
@@ -16,7 +17,7 @@
                    StartIcon="@Icons.Material.Filled.FilterList" Class="rounded-lg mr-2">Filters</MudButton>
     </MudStack>
 
-    <!-- SEARCH AND FILTERS -->
+
     @if (_showFilters)
     {
         <MudPaper Elevation="0" Class="pa-4 mb-6 rounded-xl">
@@ -56,19 +57,29 @@
     @if (isLoanSearched)
     {
         <MudPaper Elevation="0" Class="pa-5 mb-6 rounded-xl">
-            <MudText Typo="Typo.h6" Style="font-weight: 700; color: #1B2559; margin-bottom: 16px;">
-                <MudIcon Icon="@Icons.Material.Filled.Schedule" Style="margin-right: 8px;" />
-                Loan Amortization Schedule
-                @if (SearchedDisbursement?.LoanApplication != null)
+            <div class="d-flex justify-space-between align-center mb-4">
+                <MudText Typo="Typo.h6" Style="font-weight: 700; color: #1B2559;">
+                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Style="margin-right: 8px;" />
+                    Loan Amortization Schedule
+                    @if (SearchedDisbursement?.LoanApplication != null)
+                    {
+                        <span style="font-weight: 500; font-size: 0.85em; color: #6b7280; margin-left: 8px;">
+                            - @(!string.IsNullOrEmpty(SearchedDisbursement.LoanApplication.Borrower?.CompanyName) 
+                                ? SearchedDisbursement.LoanApplication.Borrower.CompanyName 
+                                : $"{SearchedDisbursement.LoanApplication.Borrower?.FirstName} {SearchedDisbursement.LoanApplication.Borrower?.LastName}") 
+                            (@SearchedDisbursement.LoanApplication.ApplicationCode)
+                        </span>
+                    }
+                </MudText>
+                @if (SearchedDisbursement != null)
                 {
-                    <span style="font-weight: 500; font-size: 0.85em; color: #6b7280; margin-left: 8px;">
-                        - @(!string.IsNullOrEmpty(SearchedDisbursement.LoanApplication.Borrower?.CompanyName) 
-                            ? SearchedDisbursement.LoanApplication.Borrower.CompanyName 
-                            : $"{SearchedDisbursement.LoanApplication.Borrower?.FirstName} {SearchedDisbursement.LoanApplication.Borrower?.LastName}") 
-                        (@SearchedDisbursement.LoanApplication.ApplicationCode)
-                    </span>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Visibility"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/PaymentDetail/{SearchedDisbursement.Id}"))">
+                        View Loan & Installment Details
+                    </MudButton>
                 }
-            </MudText>
+            </div>
 
             @if (SearchedDisbursement != null && _amortizationSchedule.Count > 0)
             {
@@ -181,7 +192,10 @@
                 </TemplateColumn>
                 <TemplateColumn Title="Action" Sortable="false">
                     <CellTemplate>
-                        <MudIconButton Icon="@Icons.Material.Filled.Receipt" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PrintReceipt(context.Item))" Title="Download/Print Receipt" />
+                        <div class="d-flex align-center gap-1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Info" Size="Size.Small" OnClick="@(() => NavigationManager.NavigateTo($"/PaymentDetail/{context.Item.DisbursementId}"))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Receipt" Color="Color.Primary" Size="Size.Small" OnClick="@(() => PrintReceipt(context.Item))" />
+                        </div>
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
@@ -385,7 +399,7 @@
                 totalPaidPool = 0;
             }
 
-            remainingBalance -= amountPaidForInstallment;
+            decimal remainingForThis = scheduledPayment - amountPaidForInstallment;
             
             string status = amountPaidForInstallment >= scheduledPayment ? "PAID" :
                            amountPaidForInstallment > 0 ? "PARTIAL" :
@@ -400,7 +414,7 @@
                 PenaltyScheduled = penaltyPart,
                 ScheduledPayment = scheduledPayment,
                 AmountPaid = amountPaidForInstallment,
-                RemainingBalance = remainingBalance > 0 ? remainingBalance : 0,
+                RemainingBalance = remainingForThis > 0 ? remainingForThis : 0,
                 StatusFlag = status
             });
         }

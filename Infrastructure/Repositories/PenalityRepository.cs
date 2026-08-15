@@ -20,12 +20,13 @@ namespace Infrastructure.Repositories
         public async Task<List<Penality>> GetAllPenalitiesAsync()
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-              if (_userContext.Id == null)
-        {
-            return new List<Penality>();
-        }
+            if (_userContext.Id == null)
+            {
+                return new List<Penality>();
+            }
             return await context.Penalties
-                 .Where(a => a.PersonId == _userContext.PersonId)
+                .AsNoTracking()
+                .Where(a => a.PersonId == _userContext.PersonId)
                 .Include(i => i.LoanApplication)
                 .ThenInclude(l => l.Borrower)
                 .Include(i => i.Reason)
@@ -37,11 +38,12 @@ namespace Infrastructure.Repositories
         public async Task<Penality?> GetPenalityByIdAsync(int id)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-             if (_userContext.Id == null)
+            if (_userContext.Id == null)
             {
                 return null;
             }
             return await context.Penalties
+                .AsNoTracking()
                 .Where(a => a.PersonId == _userContext.PersonId) 
                 .Include(i => i.LoanApplication)
                 .Include(i => i.Reason)

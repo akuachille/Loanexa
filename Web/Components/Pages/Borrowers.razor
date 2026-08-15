@@ -99,7 +99,13 @@
             <SelectColumn T="Borrower" />
             @if (IsOrganizationSelected)
             {
-                <PropertyColumn Property="x => x.CompanyName" Title="Company Name" />
+                <TemplateColumn Title="Company Name">
+                    <CellTemplate>
+                        <MudLink Href="@($"/borrower-detail/{context.Item.Id}")" Color="Color.Primary" Style="font-weight: 700;">
+                            @context.Item.CompanyName
+                        </MudLink>
+                    </CellTemplate>
+                </TemplateColumn>
                 <PropertyColumn Property="x => x.TIN" Title="TIN" />
                 <PropertyColumn Property="x => x.ContactPersonName" Title="Contact Person" />
                 <PropertyColumn Property="x => x.ContactPersonPhone" Title="Contact Phone" />
@@ -119,14 +125,9 @@
             {
                 <TemplateColumn Title="Name">
                     <CellTemplate>
-                        @if (!string.IsNullOrEmpty(context.Item.CompanyName))
-                        {
-                            <MudText Typo="Typo.body2">@context.Item.CompanyName</MudText>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.body2">@($"{context.Item.FirstName} {context.Item.LastName}")</MudText>
-                        }
+                        <MudLink Href="@($"/borrower-detail/{context.Item.Id}")" Color="Color.Primary" Style="font-weight: 700;">
+                            @(!string.IsNullOrEmpty(context.Item.CompanyName) ? context.Item.CompanyName : $"{context.Item.FirstName} {context.Item.LastName}")
+                        </MudLink>
                     </CellTemplate>
                 </TemplateColumn>
                 <PropertyColumn Property="x => x.BorrowerType.Type" Title="Borrower type" />
@@ -228,10 +229,9 @@
         };
        }
 
-    private async Task OpenDetailDialog(int id)
+    private void OpenDetailDialog(int id)
     {
-        var parameters = new DialogParameters<BorrowerDetailDialog> { { x => x.Id, id } };
-        await DialogService.ShowAsync<BorrowerDetailDialog>("View Details", parameters);
+        NavigationManager.NavigateTo($"/borrower-detail/{id}");
     }
 
     private async Task OpenDebtDialog(int id)

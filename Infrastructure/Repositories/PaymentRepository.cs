@@ -101,7 +101,9 @@ namespace Infrastructure.Repositories
                     PaymentDate = DateTime.Now,
                     IsActive = true,
                     CreatedAt = DateTime.Now,
-                   PersonId = user.Person.Id,
+                    PersonId = user.Person.Id,
+                    ProofOfPayment = paymentDTO.ProofOfPayment,
+                    ProofOfPaymentFileName = paymentDTO.ProofOfPaymentFileName,
                 };
 
                 context.Payments.Add(payment);
@@ -181,7 +183,6 @@ namespace Infrastructure.Repositories
                 // 3. Get actual penalty rate from Product Settings for the description
                 decimal rate = disbursement.LoanApplication?.LoanProductSetting?.PenalityRate ?? 0;
 
-                // 4. Create Penalty Record (Populates the Penalty Page)
                 var penalty = new Penality
                 {
                     LoanApplicationId = disbursement.LoanApplicationId,
@@ -221,7 +222,9 @@ namespace Infrastructure.Repositories
                     PaymentDate = DateTime.Now,
                     IsActive = true,
                     CreatedAt = DateTime.Now,
-                    PersonId = user.Person.Id
+                    PersonId = user.Person.Id,
+                    ProofOfPayment = paymentDTO.ProofOfPayment,
+                    ProofOfPaymentFileName = paymentDTO.ProofOfPaymentFileName
                 };
                 context.Payments.Add(payment);
                 var applicationCode = disbursement.LoanApplication?.ApplicationCode ?? disbursement.LoanApplicationId.ToString();
@@ -305,12 +308,13 @@ namespace Infrastructure.Repositories
         public async Task<List<Payment>> GetAllPaymentsAsync()
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-             if (_userContext.Id == null)
-        {
-            return new List<Payment>();
-        }
+            if (_userContext.Id == null)
+            {
+                return new List<Payment>();
+            }
             var allowedPersonIds = await _userContext.GetAllowedPersonIdsAsync();
             return await context.Payments
+                .AsNoTracking()
                 .Where(a => allowedPersonIds.Contains(a.PersonId))
                 .Include(i => i.Disbursement).ThenInclude(d => d.LoanApplication).ThenInclude(l => l.Borrower)
                 .Include(i => i.Account)
@@ -322,12 +326,13 @@ namespace Infrastructure.Repositories
         public async Task<Payment?> GetPaymentByIdAsync(int id)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-             if (_userContext.Id == null)
+            if (_userContext.Id == null)
             {
                 return null;
             }
             var allowedPersonIds = await _userContext.GetAllowedPersonIdsAsync();
             return await context.Payments
+                .AsNoTracking()
                 .Where(a => allowedPersonIds.Contains(a.PersonId))
                 .Include(i => i.Account)
                 .Include(i => i.PaymentType)

@@ -20,29 +20,30 @@ namespace Infrastructure.Repositories
         _userContext = userContext;
         }
     
-        public  async Task<List<Collateral>> GetAllCollateralsAsync()
+        public async Task<List<Collateral>> GetAllCollateralsAsync()
         {
-        using var dbContext = await _contextFactory.CreateDbContextAsync();
-        if (_userContext.Id == null)
-        {
-            return new List<Collateral>();
+            using var dbContext = await _contextFactory.CreateDbContextAsync();
+            if (_userContext.Id == null)
+            {
+                return new List<Collateral>();
+            }
+            return await dbContext.Collaterals
+                .AsNoTracking()
+                .Include(a => a.LoanApplication)
+                .Where(a => a.PersonId == _userContext.PersonId)
+                .OrderByDescending(x => x.Id).ToListAsync();
         }
-        return await dbContext.Collaterals
-            .Include(a => a.LoanApplication)
-            .Where(a => a.PersonId == _userContext.PersonId)
-            .OrderByDescending(x => x.Id).ToListAsync();
-        }
-        public async Task <Collateral> GetCollateralByIdAsync(int Id)
+        public async Task<Collateral?> GetCollateralByIdAsync(int Id)
         {
             using var dbContext = await _contextFactory.CreateDbContextAsync();
             if (_userContext.Id == null)
             {
                 return null;
             }
-            return await  dbContext.Collaterals
-            .Where(a => a.PersonId == _userContext.PersonId) 
-            .FirstOrDefaultAsync(t => t.Id == Id);
-            
+            return await dbContext.Collaterals
+                .AsNoTracking()
+                .Where(a => a.PersonId == _userContext.PersonId) 
+                .FirstOrDefaultAsync(t => t.Id == Id);
         }
          public async Task CreateCollateralAsync(CollateralCreateDTO collateralDTO)
         {
