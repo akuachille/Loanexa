@@ -20,7 +20,9 @@ namespace Infrastructure.Services
             using var qrCodeData = qrGenerator.CreateQrCode(text, QRCodeGenerator.ECCLevel.Q);
             using var qrCode = new PngByteQRCode(qrCodeData);
             
-            byte[] qrCodeImage = qrCode.GetGraphic(20);
+            byte[] darkColor = new byte[] { 0, 0, 0, 255 };
+            byte[] lightColor = new byte[] { 255, 255, 255, 255 };
+            byte[] qrCodeImage = qrCode.GetGraphic(20, darkColor, lightColor, false);
             return Convert.ToBase64String(qrCodeImage);
         }
     }

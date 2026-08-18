@@ -29,15 +29,16 @@ namespace Infrastructure.Repositories
         public async Task<List<Disbursement>> GetAllDisbursementsAsync()
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-             if (_userContext.Id == null)
-        {
-            return new List<Disbursement>();
-        }
+            if (_userContext.Id == null)
+            {
+                return new List<Disbursement>();
+            }
             var allowedPersonIds = await _userContext.GetAllowedPersonIdsAsync();
             return await context.Disbursements
+                .AsNoTracking()
                 .Include(i => i.LoanApplication).ThenInclude(l => l.Borrower)
                 .Include(i => i.PaymentModality)
-                 .Where(a => allowedPersonIds.Contains(a.PersonId))
+                .Where(a => allowedPersonIds.Contains(a.PersonId))
                 .Include(i => i.Payments)
                 .Where(d => d.IsActive)
                 .OrderByDescending(d => d.CreatedAt)
@@ -47,12 +48,13 @@ namespace Infrastructure.Repositories
         public async Task<List<Disbursement>> GetDisbursementsWithBalanceAsync()
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-             if (_userContext.Id == null)
+            if (_userContext.Id == null)
             {
                 return null;
             }
             var allowedPersonIds = await _userContext.GetAllowedPersonIdsAsync();
             var data = await context.Disbursements
+                .AsNoTracking()
                 .Include(i => i.LoanApplication).ThenInclude(l => l.Borrower)
                 .Include(i => i.PaymentModality)
                 .Where(a => allowedPersonIds.Contains(a.PersonId)) 
@@ -307,6 +309,22 @@ namespace Infrastructure.Repositories
                     nameof(Disbursement),
                     loanApp.ApplicationCode ?? loanApp.Id.ToString(),
                     $"Disbursed {netPrincipal:N2} for loan application {loanApp.ApplicationCode ?? loanApp.Id.ToString()}."));
+
+                if (procFeeAmount > 0)
+                {
+                    var procFeeDeposit = new ProcessFeeDeposit
+                    {
+                        LoanApplicationId = loanApp.Id,
+                        Amount = procFeeAmount,
+                        AccountId = disbursementDTO.AccountId,
+                        PersonId = loanApp.PersonId,
+                        DepositDate = DateTime.UtcNow,
+                        Status = FeeDepositStatus.Success,
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = _userContext.Id
+                    };
+                    context.ProcessFeeDeposits.Add(procFeeDeposit);
+                }
 
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();

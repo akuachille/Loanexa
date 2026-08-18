@@ -30,10 +30,10 @@
                 <MudIcon Icon="@Icons.Material.Filled.AccountBalance" Style="color:white; font-size:1.6rem;" />
                 <MudStack Spacing="0">
                     <MudText Typo="Typo.subtitle1" Style="color:white; font-weight:700; line-height:1.2;">
-                        Create Process Fee Deposit  
+                        Create Processing Fee Deposit  
                     </MudText>
-                    <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,0.80);">
-                        Fill the form below to create a new Process Fee Deposit
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                        Fill the form below to create a new Processing Fee Deposit
                     </MudText> 
                 </MudStack>
             </MudStack>
@@ -163,7 +163,7 @@
         try
         {
             await ProcessFeeDepositService.CreateProcessFeeDepositAsync(Model);
-            Snackbar.Add("Process fee deposit created successfully!", Severity.Info);
+            Snackbar.Add("Processing fee deposit created successfully!", Severity.Info);
             MudDialog.Close(DialogResult.Ok(Model));
         }
         catch (Exception ex)

@@ -1,0 +1,1001 @@
+@page "/borrower-detail/{Id:int}"
+@page "/BorrowerDetail/{Id:int}"
+@page "/borrower-detail"
+@page "/BorrowerDetail"
+
+@using Domain.Entities
+@using Domain.ValueObjects
+@using Application.DTO
+@using Application.Services.Borrowers
+@using Application.Services.LoanApplications
+@using Application.Services.Disbursements
+@using Application.Services.Collaterals
+@using Application.Services.Guarantors
+@using Application.Services.Payments
+@using Application.Services.Penalities
+@using Application.Services.ProcessFeeDeposits
+@using Application.Interfaces
+@using Infrastructure.Data
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using System.IO
+
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Borrower Details - @(BorrowerDisplayName)</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-10">
+    @if (_isLoading)
+    {
+        <div class="d-flex flex-column align-center justify-center py-16">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.body1" Class="mt-4" Color="Color.Secondary">Loading Borrower Profile & Financial Records...</MudText>
+        </div>
+    }
+    else if (_borrower == null)
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="my-6 rounded-lg">
+            Borrower record not found. 
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="BackToList" Class="ml-4">Back to Borrowers</MudButton>
+        </MudAlert>
+    }
+    else
+    {
+        @* --- TOP NAVIGATION & Borrower HEADER --- *@
+        <div class="d-flex justify-space-between align-center mb-4">
+            <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0" />
+            <MudButton Variant="Variant.Outlined" 
+                       Color="Color.Primary" 
+                       StartIcon="@Icons.Material.Filled.ArrowBack" 
+                       OnClick="BackToList"
+                       Style="border-radius: 8px; font-weight: 700;">
+                Back to Borrowers
+            </MudButton>
+        </div>
+
+        @* --- Borrower PROFILE CARD (MATCHING USER'S SCREENSHOT DESIGN) --- *@
+        <MudPaper Elevation="0" Class="pa-6 mb-6 rounded-xl border" Style="background: #ffffff; border-color: #e2e8f0;">
+            <div class="d-flex justify-space-between align-center mb-4 pb-3 border-b" style="border-color: #f1f5f9;">
+                <div>
+                    <MudText Typo="Typo.h5" Style="font-weight: 800; color: #1B2559;">Borrower Details:</MudText>
+                    <div class="d-flex align-center gap-2 mt-1">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 800; color: #0f172a;">
+                            Borrower: <span style="color: #4318FF;">@BorrowerDisplayName.ToUpper()</span>
+                        </MudText>
+                        <MudText Typo="Typo.body2" Style="color: #64748b;">|</MudText>
+                        <MudText Typo="Typo.body2" Style="color: #64748b; font-weight: 600;">
+                            Joined: @(_borrower.CreatedAt != DateTime.MinValue ? _borrower.CreatedAt.ToString("yyyy-MM-dd") : "N/A")
+                        </MudText>
+                        <MudText Typo="Typo.body2" Style="color: #64748b;">|</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Style="font-weight: 800; font-size: 0.75rem; height: 22px;">
+                            Active
+                        </MudChip>
+                        @if (!string.IsNullOrEmpty(_borrower.BorrowerType?.Type))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" Style="font-weight: 700; font-size: 0.75rem; height: 22px;">
+                                @_borrower.BorrowerType.Type
+                            </MudChip>
+                        }
+                    </div>
+                </div>
+
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" 
+                               Color="Color.Default" 
+                               Size="Size.Medium" 
+                               OnClick="BackToList" 
+                               Title="Back to list" />
+            </div>
+
+            @* 3-COLUMN METADATA GRID (Exact mirror of reference screenshot) *@
+            <MudGrid Spacing="3">
+                @* COLUMN 1: Basic & Identity Info *@
+                <MudItem xs="12" sm="4">
+                    <MudStack Spacing="2">
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 100px;">Sex:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155;">@(_borrower.sex?.ToString() ?? "N/A")</MudText>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 100px;">Date of Birth:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155;">@(_borrower.DateOfBirth?.ToString("yyyy-MM-dd") ?? "N/A")</MudText>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 100px;">Identity No:</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #334155;">@(!string.IsNullOrEmpty(_borrower.IdentificationNumber) ? _borrower.IdentificationNumber : (!string.IsNullOrEmpty(_borrower.TIN) ? _borrower.TIN : "N/A"))</MudText>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 100px;">Phone:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155;">@(!string.IsNullOrEmpty(_borrower.PhoneNumber) ? _borrower.PhoneNumber : (!string.IsNullOrEmpty(_borrower.ContactPersonPhone) ? _borrower.ContactPersonPhone : "N/A"))</MudText>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 100px;">Email:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155;">@(!string.IsNullOrEmpty(_borrower.Email) ? _borrower.Email : "N/A")</MudText>
+                        </div>
+                    </MudStack>
+                </MudItem>
+
+                @* COLUMN 2: Social & Profile Attributes *@
+                <MudItem xs="12" sm="4">
+                    <MudStack Spacing="2">
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 130px;">Marital Status:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155;">@(_borrower.Maritalstatus?.ToString() ?? "N/A")</MudText>
+                        </div>
+                        @if (_borrower.Maritalstatus == Maritalstatus.Married && !string.IsNullOrEmpty(_borrower.SpouceName))
+                        {
+                            <div class="d-flex gap-2">
+                                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 130px;">Spouse:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #334155;">@_borrower.SpouceName (@(_borrower.SpouceIdNumber ?? "N/A"))</MudText>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_borrower.NextOfKin))
+                        {
+                            <div class="d-flex gap-2">
+                                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 130px;">Next of Kin:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #334155;">@_borrower.NextOfKin (@(_borrower.NextOfKinRelationship ?? "Kin"))</MudText>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 130px;">Kin Phone:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #334155;">@(_borrower.KinPhoneNumber ?? "N/A")</MudText>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(_borrower.CompanyName))
+                        {
+                            <div class="d-flex gap-2">
+                                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 130px;">Contact Person:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #334155;">@_borrower.ContactPersonName</MudText>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 130px;">TIN Number:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #334155;">@_borrower.TIN</MudText>
+                            </div>
+                        }
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 130px;">Loan Accounts:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155; font-weight: 700;">@_borrowerLoans.Count Total</MudText>
+                        </div>
+                    </MudStack>
+                </MudItem>
+
+                @* COLUMN 3: Location Breakdown *@
+                <MudItem xs="12" sm="4">
+                    <MudStack Spacing="2">
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 90px;">Province:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155;">@(!string.IsNullOrEmpty(_borrower.Province) ? _borrower.Province : "N/A")</MudText>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 90px;">District:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155;">@(!string.IsNullOrEmpty(_borrower.District) ? _borrower.District : "N/A")</MudText>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 90px;">Sector:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155;">@(!string.IsNullOrEmpty(_borrower.Sector) ? _borrower.Sector : "N/A")</MudText>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 90px;">Cell:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155;">@(!string.IsNullOrEmpty(_borrower.Cell) ? _borrower.Cell : "N/A")</MudText>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <MudText Typo="Typo.body2" Style="font-weight: 700; color: #0f172a; min-width: 90px;">Village:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #334155;">@(!string.IsNullOrEmpty(_borrower.Village) ? _borrower.Village : "N/A")</MudText>
+                        </div>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @* --- FINANCIAL SUMMARY SECTION (HEADER + FILTER + SUMMARY STATS) --- *@
+        <div class="d-flex justify-space-between align-center mb-3">
+            <MudText Typo="Typo.h5" Style="font-weight: 800; color: #1B2559;">Financial Summary</MudText>
+            
+            <div style="min-width: 250px;">
+                <MudSelect T="int" Value="_selectedLoanFilterId" ValueChanged="OnLoanFilterChanged" 
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                           AnchorOrigin="Origin.BottomCenter" Style="background: white;">
+                    <MudSelectItem T="int" Value="0">Select Loan</MudSelectItem>
+                    @foreach (var loan in _borrowerLoans)
+                    {
+                        <MudSelectItem T="int" Value="@loan.Id">
+                            @(loan.ApplicationCode ?? $"#APP-{loan.Id}") - @loan.Status
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+        </div>
+
+        @* --- STATS CARDS (6 SEPARATE DETAILED CARDS) --- *@
+        <MudGrid Spacing="3" Class="mb-6">
+            @* 1. APPLIED & DISBURSED *@
+            <MudItem xs="12" sm="6" md="4" lg="2">
+                <MudPaper Elevation="0" Class="pa-4 rounded-xl border h-100" Style="background: #ffffff; border-left: 4px solid #4318FF;">
+                    <MudText Typo="Typo.caption" Style="font-weight: 700; color: #64748b; text-transform: uppercase;">Applied / Offered</MudText>
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #1B2559;" Class="mt-1">
+                        @FilteredTotalApplied.ToString("N2")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Disbursed: <b>@FilteredTotalDisbursed.ToString("N2")</b>
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+
+            @* 2. TOTAL INTEREST *@
+            <MudItem xs="12" sm="6" md="4" lg="2">
+                <MudPaper Elevation="0" Class="pa-4 rounded-xl border h-100" Style="background: #ffffff; border-left: 4px solid #0284c7;">
+                    <MudText Typo="Typo.caption" Style="font-weight: 700; color: #64748b; text-transform: uppercase;">Total Interest</MudText>
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #0284c7;" Class="mt-1">
+                        @FilteredTotalInterest.ToString("N2")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Interest on Principal
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+
+            @* 3. PROCESSING FEES (SEPARATE DEDICATED CARD) *@
+            <MudItem xs="12" sm="6" md="4" lg="2">
+                <MudPaper Elevation="0" Class="pa-4 rounded-xl border h-100" Style="background: #ffffff; border-left: 4px solid #7c3aed;">
+                    <MudText Typo="Typo.caption" Style="font-weight: 700; color: #7c3aed; text-transform: uppercase;">Processing Fees</MudText>
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #7c3aed;" Class="mt-1">
+                        @FilteredTotalProcessFees.ToString("N2")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @FilteredProcessFees.Count Deposit(s)
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+
+            @* 4. PENALTIES (SEPARATE DEDICATED CARD) *@
+            <MudItem xs="12" sm="6" md="4" lg="2">
+                <MudPaper Elevation="0" Class="pa-4 rounded-xl border h-100" Style="background: #ffffff; border-left: 4px solid #ea580c;">
+                    <MudText Typo="Typo.caption" Style="font-weight: 700; color: #ea580c; text-transform: uppercase;">Penalties</MudText>
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #ea580c;" Class="mt-1">
+                        @FilteredTotalPenaltiesActive.ToString("N2")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Success">
+                        Paid: <b>@FilteredTotalPenaltiesPaid.ToString("N2")</b>
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+
+            @* 5. TOTAL REPAID / COLLECTED *@
+            <MudItem xs="12" sm="6" md="4" lg="2">
+                <MudPaper Elevation="0" Class="pa-4 rounded-xl border h-100" Style="background: #ffffff; border-left: 4px solid #16a34a;">
+                    <MudText Typo="Typo.caption" Style="font-weight: 700; color: #16a34a; text-transform: uppercase;">Total Repaid</MudText>
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #16a34a;" Class="mt-1">
+                        @FilteredTotalPaid.ToString("N2")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Total Collected
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+
+            @* 6. OUTSTANDING BALANCE *@
+            <MudItem xs="12" sm="6" md="4" lg="2">
+                <MudPaper Elevation="0" Class="pa-4 rounded-xl border h-100" Style="background: #ffffff; border-left: 4px solid #dc2626;">
+                    <MudText Typo="Typo.caption" Style="font-weight: 700; color: #dc2626; text-transform: uppercase;">Outstanding Balance</MudText>
+                    <MudText Typo="Typo.h6" Style="font-weight: 800; color: #dc2626;" Class="mt-1">
+                        @FilteredTotalOutstanding.ToString("N2")
+                    </MudText>
+                    <MudText Typo="Typo.caption" Style="color: #dc2626; font-weight: 600;">
+                        Remaining Debt
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @* --- TABBED DETAILED SECTIONS --- *@
+        <MudPaper Elevation="0" Class="rounded-xl border" Style="background: #ffffff; border-color: #e2e8f0; overflow: hidden;">
+            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4" Color="Color.Transparent" SliderColor="Color.Primary">
+                
+                @* --- TAB 1: INSTALLMENTS SCHEDULE BREAKDOWN --- *@
+                <MudTabPanel Text="Installments Schedule" Icon="@Icons.Material.Filled.CalendarMonth" BadgeData="@FilteredScheduleRows.Count()">
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 800; color: #1B2559;">
+                            Installment Amortization Breakdown (Principal, Interest, Penalties & Remaining Balance)
+                        </MudText>
+                    </div>
+
+                    @if (!FilteredScheduleRows.Any())
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-4">
+                            No installment schedule generated for the selected loan(s).
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="@FilteredScheduleRows" Hover="true" Dense="true" Elevation="0" Class="border rounded-lg">
+                            <HeaderContent>
+                                <MudTh>Loan Code</MudTh>
+                                <MudTh>Inst #</MudTh>
+                                <MudTh>Due Date</MudTh>
+                                <MudTh Style="text-align: right;">Principal Part</MudTh>
+                                <MudTh Style="text-align: right;">Interest Part</MudTh>
+                                <MudTh Style="text-align: right;">Penalty Part</MudTh>
+                                <MudTh Style="text-align: right;">Total Installment</MudTh>
+                                <MudTh Style="text-align: right;">Amount Paid</MudTh>
+                                <MudTh Style="text-align: right;">Remaining Balance</MudTh>
+                                <MudTh Style="text-align: center;">Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd><b>@context.LoanCode</b></MudTd>
+                                <MudTd><b>#@context.InstallmentNo</b></MudTd>
+                                <MudTd>@context.DueDate.ToString("yyyy-MM-dd")</MudTd>
+                                <MudTd Style="text-align: right;">@context.PrincipalPart.ToString("N2")</MudTd>
+                                <MudTd Style="text-align: right;">@context.InterestPart.ToString("N2")</MudTd>
+                                <MudTd Style="text-align: right; color: #dc2626;">@(context.PenaltyPart > 0 ? context.PenaltyPart.ToString("N2") : "-")</MudTd>
+                                <MudTd Style="text-align: right; font-weight: 700;">@context.TotalInstallmentAmount.ToString("N2")</MudTd>
+                                <MudTd Style="text-align: right; color: #16a34a; font-weight: 600;">@context.AmountPaid.ToString("N2")</MudTd>
+                                <MudTd Style="@($"text-align: right; font-weight: 800; color: {(context.RemainingBalance > 0 ? "#dc2626" : "#16a34a")};")">
+                                    @(context.RemainingBalance > 0 ? context.RemainingBalance.ToString("N2") : "0.00")
+                                </MudTd>
+                                <MudTd Style="text-align: center;">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetInstallmentStatusColor(context.Status)" Style="font-weight: 800; font-size: 0.7rem;">
+                                        @context.Status
+                                    </MudChip>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudTabPanel>
+
+                @* --- TAB 2: ALL PAYMENT DETAILS & TRANSACTIONS --- *@
+                <MudTabPanel Text="Payment Details" Icon="@Icons.Material.Filled.Payments" BadgeData="@FilteredPayments.Count">
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 800; color: #1B2559;">
+                            All Payment & Transaction Records
+                        </MudText>
+                    </div>
+
+                    @if (!FilteredPayments.Any())
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-4">
+                            No payment transactions recorded for this borrower.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="@FilteredPayments" Hover="true" Dense="true" Elevation="0" Class="border rounded-lg">
+                            <HeaderContent>
+                                <MudTh>Tx #</MudTh>
+                                <MudTh>Payment Date</MudTh>
+                                <MudTh>Loan Code</MudTh>
+                                <MudTh>Receiving Account</MudTh>
+                                <MudTh>Payment Type</MudTh>
+                                <MudTh Style="text-align: right;">Principal Paid</MudTh>
+                                <MudTh Style="text-align: right;">Interest Paid</MudTh>
+                                <MudTh Style="text-align: right;">Penalty Paid</MudTh>
+                                <MudTh Style="text-align: right;">Total Paid</MudTh>
+                                <MudTh Style="text-align: center;">Proof</MudTh>
+                                <MudTh Style="text-align: center;">Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd><b>#@context.Id.ToString("D6")</b></MudTd>
+                                <MudTd>@context.PaymentDate.ToString("yyyy-MM-dd")</MudTd>
+                                <MudTd>@(context.Disbursement?.LoanApplication?.ApplicationCode ?? $"#APP-{context.Disbursement?.LoanApplicationId}")</MudTd>
+                                <MudTd>@(context.Account?.Name ?? "N/A")</MudTd>
+                                <MudTd>@(context.PaymentType?.PaymentTypeName ?? "Standard")</MudTd>
+                                <MudTd Style="text-align: right;">@context.PrincipalPaid.ToString("N2")</MudTd>
+                                <MudTd Style="text-align: right;">@context.InterestPaid.ToString("N2")</MudTd>
+                                <MudTd Style="text-align: right; color: #dc2626;">@(context.PenaltyPaid > 0 ? context.PenaltyPaid.ToString("N2") : "-")</MudTd>
+                                <MudTd Style="text-align: right; font-weight: 800; color: #16a34a;">@context.Amount.ToString("N2")</MudTd>
+                                <MudTd Style="text-align: center;">
+                                    @if (context.ProofOfPayment != null && context.ProofOfPayment.Length > 0)
+                                    {
+                                        <MudButton Variant="Variant.Text" 
+                                                   Color="Color.Primary" 
+                                                   Size="Size.Small" 
+                                                   StartIcon="@Icons.Material.Filled.AttachFile" 
+                                                   OnClick="@(() => DownloadProof(context))">
+                                            @(string.IsNullOrEmpty(context.ProofOfPaymentFileName) ? "View" : context.ProofOfPaymentFileName)
+                                        </MudButton>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">None</MudText>
+                                    }
+                                </MudTd>
+                                <MudTd Style="text-align: center;">
+                                    <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Error)" Variant="Variant.Filled" Style="font-weight: 700; font-size: 0.7rem;">
+                                        @(context.IsActive ? "Success" : "Void")
+                                    </MudChip>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudTabPanel>
+
+                @* --- TAB 3: LOANS & APPLICATIONS --- *@
+                <MudTabPanel Text="Loan Applications" Icon="@Icons.Material.Filled.Assignment" BadgeData="@_borrowerLoans.Count">
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 800; color: #1B2559;">
+                            Loan Applications & Disbursed Accounts
+                        </MudText>
+                    </div>
+
+                    @if (!_borrowerLoans.Any())
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-4">
+                            No loan applications found for this borrower.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="@_borrowerLoans" Hover="true" Dense="true" Elevation="0" Class="border rounded-lg">
+                            <HeaderContent>
+                                <MudTh>App Code</MudTh>
+                                <MudTh>Product</MudTh>
+                                <MudTh Style="text-align: right;">Applied Amount</MudTh>
+                                <MudTh Style="text-align: right;">Disbursed Principal</MudTh>
+                                <MudTh Style="text-align: right;">Processing Fee</MudTh>
+                                <MudTh Style="text-align: right;">Total Repayable</MudTh>
+                                <MudTh Style="text-align: center;">Modality</MudTh>
+                                <MudTh Style="text-align: center;">Installments</MudTh>
+                                <MudTh>Application Date</MudTh>
+                                <MudTh Style="text-align: center;">Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd><b>@(context.ApplicationCode ?? $"#APP-{context.Id}")</b></MudTd>
+                                <MudTd>@(context.LoanProductSetting?.LoanProduct?.ProductName ?? "Standard")</MudTd>
+                                <MudTd Style="text-align: right; font-weight: 700;">@context.AmountRequested.ToString("N2")</MudTd>
+                                @{
+                                    var disb = _disbursements.FirstOrDefault(d => d.LoanApplicationId == context.Id);
+                                    var pFee = _processFees.Where(f => f.LoanApplicationId == context.Id).Sum(f => f.Amount);
+                                }
+                                <MudTd Style="text-align: right; color: #0284c7; font-weight: 700;">
+                                    @(disb != null ? disb.PrincipalOffered.ToString("N2") : "-")
+                                </MudTd>
+                                <MudTd Style="text-align: right; color: #7c3aed; font-weight: 700;">
+                                    @(pFee > 0 ? pFee.ToString("N2") : "-")
+                                </MudTd>
+                                <MudTd Style="text-align: right; font-weight: 700; color: #1B2559;">
+                                    @(disb != null ? disb.Amount.ToString("N2") : "-")
+                                </MudTd>
+                                <MudTd Style="text-align: center;">
+                                    @(disb?.PaymentModality?.Mode ?? context.PaymentModality?.Mode ?? "Monthly")
+                                </MudTd>
+                                <MudTd Style="text-align: center;">
+                                    @(disb?.TotalInstallments ?? 0)
+                                </MudTd>
+                                <MudTd>@context.DateofApplication.ToString("yyyy-MM-dd")</MudTd>
+                                <MudTd Style="text-align: center;">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetLoanStatusColor(context.Status)" Style="font-weight: 800; font-size: 0.7rem;">
+                                        @context.Status
+                                    </MudChip>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudTabPanel>
+
+                @* --- TAB 4: COLLATERALS --- *@
+                <MudTabPanel Text="Collaterals" Icon="@Icons.Material.Filled.Security" BadgeData="@FilteredCollaterals.Count">
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 800; color: #1B2559;">
+                            Pledged Collateral Assets
+                        </MudText>
+                    </div>
+
+                    @if (!FilteredCollaterals.Any())
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-4">
+                            No collaterals registered for this borrower's loan applications.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="@FilteredCollaterals" Hover="true" Dense="true" Elevation="0" Class="border rounded-lg">
+                            <HeaderContent>
+                                <MudTh>Asset Name</MudTh>
+                                <MudTh>Asset Type</MudTh>
+                                <MudTh>Loan Code</MudTh>
+                                <MudTh Style="text-align: right;">Estimated Value</MudTh>
+                                <MudTh>Valuer Name</MudTh>
+                                <MudTh>Valuation Date</MudTh>
+                                <MudTh>ID / Reg #</MudTh>
+                                <MudTh>Location</MudTh>
+                                <MudTh>Description</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd><b>@context.AssetName</b></MudTd>
+                                <MudTd>@(context.AssetType ?? "General")</MudTd>
+                                <MudTd>@(context.LoanApplication?.ApplicationCode ?? $"#APP-{context.LoanApplicationId}")</MudTd>
+                                <MudTd Style="text-align: right; font-weight: 800; color: #16a34a;">@context.EstimatedValue.ToString("N2")</MudTd>
+                                <MudTd>@(context.ValuerName ?? "N/A")</MudTd>
+                                <MudTd>@(context.ValuationDate != DateTime.MinValue ? context.ValuationDate.ToString("yyyy-MM-dd") : "N/A")</MudTd>
+                                <MudTd>@(context.IdentificationNumber ?? "N/A")</MudTd>
+                                <MudTd>
+                                    @($"{context.Province}, {context.District}, {context.Sector}")
+                                </MudTd>
+                                <MudTd>@(context.Description ?? "-")</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudTabPanel>
+
+                @* --- TAB 5: GUARANTORS --- *@
+                <MudTabPanel Text="Guarantors" Icon="@Icons.Material.Filled.PeopleAlt" BadgeData="@FilteredGuarantors.Count">
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 800; color: #1B2559;">
+                            Registered Guarantors
+                        </MudText>
+                    </div>
+
+                    @if (!FilteredGuarantors.Any())
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-4">
+                            No guarantors attached to this borrower's loan applications.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="@FilteredGuarantors" Hover="true" Dense="true" Elevation="0" Class="border rounded-lg">
+                            <HeaderContent>
+                                <MudTh>Guarantor Name</MudTh>
+                                <MudTh>Identification (ID)</MudTh>
+                                <MudTh>Loan Code</MudTh>
+                                <MudTh>Guarantor Type</MudTh>
+                                <MudTh>Phone</MudTh>
+                                <MudTh>Email</MudTh>
+                                <MudTh>Location</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>
+                                    <b>@(!string.IsNullOrEmpty(context.CompanyName) ? context.CompanyName : $"{context.FirstName} {context.LastName}")</b>
+                                </MudTd>
+                                <MudTd>@context.Identification</MudTd>
+                                <MudTd>@(context.LoanApplication?.ApplicationCode ?? $"#APP-{context.LoanApplicationId}")</MudTd>
+                                <MudTd>@(context.GuarantorType?.Name ?? "Individual")</MudTd>
+                                <MudTd>@(!string.IsNullOrEmpty(context.PhoneNumber) ? context.PhoneNumber : context.ContactPersonPhone ?? "N/A")</MudTd>
+                                <MudTd>@(context.Email ?? "N/A")</MudTd>
+                                <MudTd>@($"{context.Province}, {context.District}, {context.Sector}")</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudTabPanel>
+
+                @* --- TAB 6: PENALTIES --- *@
+                <MudTabPanel Text="Penalties" Icon="@Icons.Material.Filled.WarningAmber" BadgeData="@FilteredPenalties.Count">
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 800; color: #1B2559;">
+                            Late & Default Penalties Charged
+                        </MudText>
+                    </div>
+
+                    @if (!FilteredPenalties.Any())
+                    {
+                        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="my-4">
+                            No penalties recorded for this borrower. Excellent repayment record!
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="@FilteredPenalties" Hover="true" Dense="true" Elevation="0" Class="border rounded-lg">
+                            <HeaderContent>
+                                <MudTh>Date</MudTh>
+                                <MudTh>Loan Code</MudTh>
+                                <MudTh Style="text-align: right;">Penalty Amount</MudTh>
+                                <MudTh>Reason</MudTh>
+                                <MudTh>Description</MudTh>
+                                <MudTh Style="text-align: center;">Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.Date.ToString("yyyy-MM-dd")</MudTd>
+                                <MudTd>@(context.LoanApplication?.ApplicationCode ?? $"#APP-{context.LoanApplicationId}")</MudTd>
+                                <MudTd Style="text-align: right; font-weight: 800; color: #dc2626;">@context.Amount.ToString("N2")</MudTd>
+                                <MudTd>@(context.Reason?.Name ?? "Late Repayment")</MudTd>
+                                <MudTd>@(context.Description ?? "-")</MudTd>
+                                <MudTd Style="text-align: center;">
+                                    <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Error : Color.Default)" Variant="Variant.Filled" Style="font-weight: 700; font-size: 0.7rem;">
+                                        @(context.IsActive ? "Active" : "Settled / Waived")
+                                    </MudChip>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudTabPanel>
+                @* --- TAB 7: PROCESSING FEES --- *@
+                <MudTabPanel Text="Processing Fees" Icon="@Icons.Material.Filled.ReceiptLong" BadgeData="@FilteredProcessFees.Count">
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 800; color: #1B2559;">
+                            Loan Processing Fee Deposits
+                        </MudText>
+                    </div>
+
+                    @if (!FilteredProcessFees.Any())
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="my-4">
+                            No process fee records found for this borrower.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="@FilteredProcessFees" Hover="true" Dense="true" Elevation="0" Class="border rounded-lg">
+                            <HeaderContent>
+                                <MudTh>Deposit Date</MudTh>
+                                <MudTh>Loan Code</MudTh>
+                                <MudTh>Receiving Account</MudTh>
+                                <MudTh Style="text-align: right;">Fee Amount</MudTh>
+                                <MudTh Style="text-align: center;">Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.DepositDate.ToString("yyyy-MM-dd")</MudTd>
+                                <MudTd>@(context.LoanApplication?.ApplicationCode ?? $"#APP-{context.LoanApplicationId}")</MudTd>
+                                <MudTd>@(context.Account?.Name ?? "N/A")</MudTd>
+                                <MudTd Style="text-align: right; font-weight: 800; color: #4318FF;">@context.Amount.ToString("N2")</MudTd>
+                                <MudTd Style="text-align: center;">
+                                    <MudChip T="string" Size="Size.Small" Color="@GetFeeStatusColor(context.Status)" Variant="Variant.Filled" Style="font-weight: 700; font-size: 0.7rem;">
+                                        @context.Status
+                                    </MudChip>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudTabPanel>
+            </MudTabs>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery] public int? BorrowerId { get; set; }
+
+    private bool _isLoading = true;
+    private Borrower? _borrower;
+    private List<LoanApplication> _borrowerLoans = new();
+    private List<Disbursement> _disbursements = new();
+    private List<Domain.Entities.Collateral> _collaterals = new();
+    private List<Guarantor> _guarantors = new();
+    private List<Payment> _payments = new();
+    private List<Penality> _penalties = new();
+    private List<ProcessFeeDeposit> _processFees = new();
+
+    private int _selectedLoanFilterId = 0;
+    private int _lastLoadedBorrowerId = 0;
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+
+    public class DetailedScheduleRow
+    {
+        public string LoanCode { get; set; } = "";
+        public int InstallmentNo { get; set; }
+        public DateTime DueDate { get; set; }
+        public decimal PrincipalPart { get; set; }
+        public decimal InterestPart { get; set; }
+        public decimal PenaltyPart { get; set; }
+        public decimal TotalInstallmentAmount { get; set; }
+        public decimal AmountPaid { get; set; }
+        public decimal RemainingBalance { get; set; }
+        public string Status { get; set; } = "PENDING";
+    }
+
+    private List<DetailedScheduleRow> _allScheduleRows = new();
+
+    private string BorrowerDisplayName => _borrower != null
+        ? (!string.IsNullOrWhiteSpace(_borrower.CompanyName)
+            ? _borrower.CompanyName
+            : $"{_borrower.FirstName} {_borrower.LastName}".Trim())
+        : "Borrower";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Borrowers", href: "/Borrowers"),
+            new BreadcrumbItem("Borrower Details", href: null, disabled: true)
+        };
+
+        int targetId = Id > 0 ? Id : (BorrowerId ?? 0);
+        if (targetId > 0 && targetId != _lastLoadedBorrowerId)
+        {
+            await LoadDataAsync(targetId);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        int targetId = Id > 0 ? Id : (BorrowerId ?? 0);
+        if (targetId > 0 && targetId != _lastLoadedBorrowerId)
+        {
+            await LoadDataAsync(targetId);
+        }
+    }
+
+    private async Task LoadDataAsync(int borrowerId)
+    {
+        try
+        {
+            _isLoading = true;
+            _lastLoadedBorrowerId = borrowerId;
+
+            using var context = await DbContextFactory.CreateDbContextAsync();
+
+            // 1. Fetch Borrower with BorrowerType directly
+            _borrower = await context.Borrowers
+                .AsNoTracking()
+                .Include(b => b.BorrowerType)
+                .FirstOrDefaultAsync(b => b.Id == borrowerId);
+
+            if (_borrower == null) return;
+
+            // 2. Fetch Loans for this borrower only
+            _borrowerLoans = await context.LoanApplications
+                .AsNoTracking()
+                .Include(l => l.LoanProductSetting).ThenInclude(s => s.LoanProduct)
+                .Include(l => l.PaymentModality)
+                .Where(l => l.BorrowerId == borrowerId)
+                .OrderByDescending(l => l.Id)
+                .ToListAsync();
+
+            var loanIds = _borrowerLoans.Select(l => l.Id).ToList();
+
+            // 3. Fetch Disbursements for these loans only
+            _disbursements = await context.Disbursements
+                .AsNoTracking()
+                .Include(d => d.PaymentModality)
+                .Where(d => loanIds.Contains(d.LoanApplicationId) && d.IsActive)
+                .ToListAsync();
+
+            var disbIds = _disbursements.Select(d => d.Id).ToList();
+
+            // 4. Fetch Collaterals for these loans only
+            _collaterals = await context.Collaterals
+                .AsNoTracking()
+                .Where(c => loanIds.Contains(c.LoanApplicationId))
+                .ToListAsync();
+
+            // 5. Fetch Guarantors for these loans only
+            _guarantors = await context.Guarantors
+                .AsNoTracking()
+                .Include(g => g.GuarantorType)
+                .Where(g => loanIds.Contains(g.LoanApplicationId))
+                .ToListAsync();
+
+            // 6. Fetch Payments for these disbursements only (without dragging full database)
+            _payments = await context.Payments
+                .AsNoTracking()
+                .Include(p => p.Account)
+                .Include(p => p.PaymentType)
+                .Include(p => p.Disbursement).ThenInclude(d => d.LoanApplication)
+                .Where(p => disbIds.Contains(p.DisbursementId))
+                .OrderByDescending(p => p.PaymentDate)
+                .ToListAsync();
+
+            // 7. Fetch Penalties for these loans only
+            _penalties = await context.Penalties
+                .AsNoTracking()
+                .Include(p => p.Reason)
+                .Include(p => p.LoanApplication)
+                .Where(p => loanIds.Contains(p.LoanApplicationId))
+                .OrderByDescending(p => p.Date)
+                .ToListAsync();
+
+            // 8. Fetch Process Fees for these loans only
+            _processFees = await context.ProcessFeeDeposits
+                .AsNoTracking()
+                .Include(f => f.Account)
+                .Include(f => f.LoanApplication)
+                .Where(f => loanIds.Contains(f.LoanApplicationId))
+                .OrderByDescending(f => f.DepositDate)
+                .ToListAsync();
+
+            // Build Amortization Schedules for all disbursements
+            BuildScheduleRows();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading borrower details: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void BuildScheduleRows()
+    {
+        _allScheduleRows.Clear();
+
+        foreach (var disb in _disbursements)
+        {
+            var loanApp = _borrowerLoans.FirstOrDefault(l => l.Id == disb.LoanApplicationId);
+            string loanCode = loanApp?.ApplicationCode ?? $"#APP-{disb.LoanApplicationId}";
+
+            int n = disb.TotalInstallments > 0 ? disb.TotalInstallments : 1;
+            decimal principalPart = disb.PrincipalOffered / n;
+            decimal totalInterest = disb.Amount - disb.PrincipalOffered;
+            decimal interestPart = totalInterest > 0 ? (totalInterest / n) : 0;
+            decimal totalInstallmentAmount = disb.Amount / n;
+
+            var disbPayments = _payments.Where(p => p.DisbursementId == disb.Id && p.IsActive).OrderBy(p => p.PaymentDate).ToList();
+            decimal currentPaidPool = disbPayments.Sum(p => p.Amount);
+
+            string mode = disb.PaymentModality?.Mode?.ToLower() ?? "monthly";
+            DateTime baseDate = disb.StartDate;
+
+            for (int i = 1; i <= n; i++)
+            {
+                DateTime dueDate = mode switch
+                {
+                    "daily" => baseDate.AddDays(i),
+                    "weekly" => baseDate.AddDays(i * 7),
+                    "monthly" => baseDate.AddMonths(i),
+                    "yearly" => baseDate.AddYears(i),
+                    _ => baseDate.AddMonths(i)
+                };
+
+                decimal amountPaidForInstallment = 0;
+                if (currentPaidPool >= totalInstallmentAmount)
+                {
+                    amountPaidForInstallment = totalInstallmentAmount;
+                    currentPaidPool -= totalInstallmentAmount;
+                }
+                else if (currentPaidPool > 0)
+                {
+                    amountPaidForInstallment = currentPaidPool;
+                    currentPaidPool = 0;
+                }
+
+                decimal remainingForThis = totalInstallmentAmount - amountPaidForInstallment;
+
+                string status = "PENDING";
+                if (amountPaidForInstallment >= totalInstallmentAmount - 0.01m)
+                {
+                    status = "PAID";
+                }
+                else if (amountPaidForInstallment > 0)
+                {
+                    status = "PARTIAL";
+                }
+                else if (DateTime.Today > dueDate.Date)
+                {
+                    status = "OVERDUE";
+                }
+
+                _allScheduleRows.Add(new DetailedScheduleRow
+                {
+                    LoanCode = loanCode,
+                    InstallmentNo = i,
+                    DueDate = dueDate,
+                    PrincipalPart = principalPart,
+                    InterestPart = interestPart,
+                    PenaltyPart = 0,
+                    TotalInstallmentAmount = totalInstallmentAmount,
+                    AmountPaid = amountPaidForInstallment,
+                    RemainingBalance = remainingForThis > 0 ? remainingForThis : 0,
+                    Status = status
+                });
+            }
+        }
+    }
+
+    private void OnLoanFilterChanged(int loanId)
+    {
+        _selectedLoanFilterId = loanId;
+        StateHasChanged();
+    }
+
+    private void BackToList()
+    {
+        NavigationManager.NavigateTo("/Borrowers");
+    }
+
+    // --- FILTERED COLLECTIONS BASED ON SELECTED LOAN ---
+    private IEnumerable<DetailedScheduleRow> FilteredScheduleRows => _selectedLoanFilterId == 0
+        ? _allScheduleRows
+        : _allScheduleRows.Where(r => {
+            var targetLoan = _borrowerLoans.FirstOrDefault(l => l.Id == _selectedLoanFilterId);
+            return targetLoan != null && (r.LoanCode == targetLoan.ApplicationCode || r.LoanCode == $"#APP-{targetLoan.Id}");
+        });
+
+    private List<Payment> FilteredPayments => _selectedLoanFilterId == 0
+        ? _payments
+        : _payments.Where(p => p.Disbursement?.LoanApplicationId == _selectedLoanFilterId).ToList();
+
+    private List<Domain.Entities.Collateral> FilteredCollaterals => _selectedLoanFilterId == 0
+        ? _collaterals
+        : _collaterals.Where(c => c.LoanApplicationId == _selectedLoanFilterId).ToList();
+
+    private List<Guarantor> FilteredGuarantors => _selectedLoanFilterId == 0
+        ? _guarantors
+        : _guarantors.Where(g => g.LoanApplicationId == _selectedLoanFilterId).ToList();
+
+    private List<Penality> FilteredPenalties => _selectedLoanFilterId == 0
+        ? _penalties
+        : _penalties.Where(p => p.LoanApplicationId == _selectedLoanFilterId).ToList();
+
+    private List<ProcessFeeDeposit> FilteredProcessFees => _selectedLoanFilterId == 0
+        ? _processFees
+        : _processFees.Where(f => f.LoanApplicationId == _selectedLoanFilterId).ToList();
+
+    // --- SUMMARY METRICS COMPUTATIONS ---
+    private decimal FilteredTotalApplied => _selectedLoanFilterId == 0
+        ? _borrowerLoans.Sum(l => l.AmountRequested)
+        : _borrowerLoans.Where(l => l.Id == _selectedLoanFilterId).Sum(l => l.AmountRequested);
+
+    private decimal FilteredTotalDisbursed => _selectedLoanFilterId == 0
+        ? _disbursements.Sum(d => d.PrincipalOffered)
+        : _disbursements.Where(d => d.LoanApplicationId == _selectedLoanFilterId).Sum(d => d.PrincipalOffered);
+
+    private decimal FilteredTotalInterest => _selectedLoanFilterId == 0
+        ? _disbursements.Sum(d => (d.Amount - d.PrincipalOffered) > 0 ? (d.Amount - d.PrincipalOffered) : 0)
+        : _disbursements.Where(d => d.LoanApplicationId == _selectedLoanFilterId).Sum(d => (d.Amount - d.PrincipalOffered) > 0 ? (d.Amount - d.PrincipalOffered) : 0);
+
+    private decimal FilteredTotalProcessFees => _selectedLoanFilterId == 0
+        ? _processFees.Sum(f => f.Amount)
+        : _processFees.Where(f => f.LoanApplicationId == _selectedLoanFilterId).Sum(f => f.Amount);
+
+    private decimal FilteredTotalPaid => FilteredPayments.Where(p => p.IsActive).Sum(p => p.Amount);
+
+    private decimal FilteredTotalPenaltiesActive => FilteredPenalties.Where(p => p.IsActive).Sum(p => p.Amount);
+    private decimal FilteredTotalPenaltiesPaid => FilteredPayments.Where(p => p.IsActive).Sum(p => p.PenaltyPaid);
+
+    private decimal FilteredTotalOutstanding
+    {
+        get
+        {
+            var targetDisb = _selectedLoanFilterId == 0 
+                ? _disbursements 
+                : _disbursements.Where(d => d.LoanApplicationId == _selectedLoanFilterId).ToList();
+
+            decimal totalRepayable = targetDisb.Sum(d => d.Amount);
+            decimal totalPaid = FilteredTotalPaid;
+            decimal balance = totalRepayable - totalPaid;
+            return balance > 0 ? balance : 0;
+        }
+    }
+
+    private Color GetInstallmentStatusColor(string status) => status switch
+    {
+        "PAID" => Color.Success,
+        "PARTIAL" => Color.Warning,
+        "OVERDUE" => Color.Error,
+        _ => Color.Default
+    };
+
+    private Color GetLoanStatusColor(LoanStatus status) => status switch
+    {
+        LoanStatus.Disbursed => Color.Success,
+        LoanStatus.Approved => Color.Info,
+        LoanStatus.Paid => Color.Primary,
+        LoanStatus.Applied => Color.Warning,
+        LoanStatus.Rejected => Color.Error,
+        LoanStatus.Rescheduled => Color.Dark,
+        _ => Color.Default
+    };
+
+    private Color GetFeeStatusColor(FeeDepositStatus status) => status.ToString().ToLower() switch
+    {
+        "paid" or "approved" or "verified" => Color.Success,
+        "pending" => Color.Warning,
+        "rejected" => Color.Error,
+        _ => Color.Info
+    };
+
+    private async Task DownloadProof(Payment payment)
+    {
+        if (payment.ProofOfPayment == null || payment.ProofOfPayment.Length == 0) return;
+        
+        string fileName = !string.IsNullOrEmpty(payment.ProofOfPaymentFileName) 
+            ? payment.ProofOfPaymentFileName 
+            : $"Proof_Payment_{payment.Id}.pdf";
+        
+        string base64 = Convert.ToBase64String(payment.ProofOfPayment);
+        await JSRuntime.InvokeVoidAsync("eval", $@"
+            (function() {{
+                var link = document.createElement('a');
+                link.download = '{fileName}';
+                link.href = 'data:application/octet-stream;base64,{base64}';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }})();
+        ");
+    }
+}

@@ -77,16 +77,30 @@ namespace Infrastructure.Repositories
                 
                 account.Balance += paymentDTO.Amount;
 
-                // 7. Calculate Interest vs Principal
+                // 7. Calculate Penalty, Interest vs Principal
+                decimal penaltyPart = 0;
                 decimal interestPart = 0;
                 decimal principalPart = 0;
-                if (disbursement.TotalInstallments > 0)
+                decimal remainingPayment = paymentDTO.Amount;
+
+                decimal totalPenalties = await context.Penalties.Where(p => p.LoanApplicationId == disbursement.LoanApplicationId && p.IsActive).SumAsync(p => p.Amount);
+                decimal totalPenaltyPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.PenaltyPaid);
+                decimal unpaidPenalties = Math.Max(0, totalPenalties - totalPenaltyPaid);
+
+                penaltyPart = Math.Min(remainingPayment, unpaidPenalties);
+                remainingPayment -= penaltyPart;
+
+                if (disbursement.TotalInstallments > 0 && remainingPayment > 0)
                 {
                     decimal totalInterest = disbursement.PrincipalOffered * (disbursement.InterestRate / 100);
-                    decimal scheduledInterest = totalInterest / disbursement.TotalInstallments;
-                    interestPart = Math.Min(paymentDTO.Amount, scheduledInterest);
-                    principalPart = paymentDTO.Amount - interestPart;
+                    decimal totalInterestPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.InterestPaid);
+                    decimal unpaidInterest = Math.Max(0, totalInterest - totalInterestPaid);
+                    
+                    interestPart = Math.Min(remainingPayment, unpaidInterest);
+                    remainingPayment -= interestPart;
                 }
+
+                principalPart = remainingPayment;
 
                 // 8. Create Payment Record
                 var payment = new Payment
@@ -97,11 +111,13 @@ namespace Infrastructure.Repositories
                     Amount = paymentDTO.Amount,
                     PrincipalPaid = principalPart,
                     InterestPaid = interestPart,
-                    PenaltyPaid = 0,
+                    PenaltyPaid = penaltyPart,
                     PaymentDate = DateTime.Now,
                     IsActive = true,
                     CreatedAt = DateTime.Now,
-                   PersonId = user.Person.Id,
+                    PersonId = user.Person.Id,
+                    ProofOfPayment = paymentDTO.ProofOfPayment,
+                    ProofOfPaymentFileName = paymentDTO.ProofOfPaymentFileName,
                 };
 
                 context.Payments.Add(payment);
@@ -181,7 +197,6 @@ namespace Infrastructure.Repositories
                 // 3. Get actual penalty rate from Product Settings for the description
                 decimal rate = disbursement.LoanApplication?.LoanProductSetting?.PenalityRate ?? 0;
 
-                // 4. Create Penalty Record (Populates the Penalty Page)
                 var penalty = new Penality
                 {
                     LoanApplicationId = disbursement.LoanApplicationId,
@@ -197,16 +212,35 @@ namespace Infrastructure.Repositories
                 // We add ONLY the penaltyAmount. The shortfall is already part of the principal.
                 disbursement.Amount += penaltyAmount;
 
-                // 6. Calculate Interest vs Principal
+                // 6. Calculate Penalty, Interest vs Principal
+                decimal penaltyPart = 0;
                 decimal interestPart = 0;
                 decimal principalPart = 0;
-                if (disbursement.TotalInstallments > 0)
+                decimal remainingPayment = paymentDTO.Amount;
+
+                // Note: The new penalty has already been added to context.Penalties in memory, 
+                // but since it's not saved yet, we add its amount to the sum from DB, OR we save changes first.
+                // It's safer to query the DB and add the newly created penalty amount.
+                decimal totalPenalties = await context.Penalties.Where(p => p.LoanApplicationId == disbursement.LoanApplicationId && p.IsActive).SumAsync(p => p.Amount);
+                totalPenalties += penaltyAmount; // Add the one we just created in memory
+                
+                decimal totalPenaltyPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.PenaltyPaid);
+                decimal unpaidPenalties = Math.Max(0, totalPenalties - totalPenaltyPaid);
+
+                penaltyPart = Math.Min(remainingPayment, unpaidPenalties);
+                remainingPayment -= penaltyPart;
+
+                if (disbursement.TotalInstallments > 0 && remainingPayment > 0)
                 {
                     decimal totalInterest = disbursement.PrincipalOffered * (disbursement.InterestRate / 100);
-                    decimal scheduledInterest = totalInterest / disbursement.TotalInstallments;
-                    interestPart = Math.Min(paymentDTO.Amount, scheduledInterest);
-                    principalPart = paymentDTO.Amount - interestPart;
+                    decimal totalInterestPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.InterestPaid);
+                    decimal unpaidInterest = Math.Max(0, totalInterest - totalInterestPaid);
+                    
+                    interestPart = Math.Min(remainingPayment, unpaidInterest);
+                    remainingPayment -= interestPart;
                 }
+
+                principalPart = remainingPayment;
 
                 // 7. Create the Payment Record
                 var payment = new Payment
@@ -217,11 +251,13 @@ namespace Infrastructure.Repositories
                     Amount = paymentDTO.Amount,
                     PrincipalPaid = principalPart,
                     InterestPaid = interestPart,
-                    PenaltyPaid = penaltyAmount,
+                    PenaltyPaid = penaltyPart,
                     PaymentDate = DateTime.Now,
                     IsActive = true,
                     CreatedAt = DateTime.Now,
-                    PersonId = user.Person.Id
+                    PersonId = user.Person.Id,
+                    ProofOfPayment = paymentDTO.ProofOfPayment,
+                    ProofOfPaymentFileName = paymentDTO.ProofOfPaymentFileName
                 };
                 context.Payments.Add(payment);
                 var applicationCode = disbursement.LoanApplication?.ApplicationCode ?? disbursement.LoanApplicationId.ToString();
@@ -305,12 +341,13 @@ namespace Infrastructure.Repositories
         public async Task<List<Payment>> GetAllPaymentsAsync()
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-             if (_userContext.Id == null)
-        {
-            return new List<Payment>();
-        }
+            if (_userContext.Id == null)
+            {
+                return new List<Payment>();
+            }
             var allowedPersonIds = await _userContext.GetAllowedPersonIdsAsync();
             return await context.Payments
+                .AsNoTracking()
                 .Where(a => allowedPersonIds.Contains(a.PersonId))
                 .Include(i => i.Disbursement).ThenInclude(d => d.LoanApplication).ThenInclude(l => l.Borrower)
                 .Include(i => i.Account)
@@ -322,12 +359,13 @@ namespace Infrastructure.Repositories
         public async Task<Payment?> GetPaymentByIdAsync(int id)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
-             if (_userContext.Id == null)
+            if (_userContext.Id == null)
             {
                 return null;
             }
             var allowedPersonIds = await _userContext.GetAllowedPersonIdsAsync();
             return await context.Payments
+                .AsNoTracking()
                 .Where(a => allowedPersonIds.Contains(a.PersonId))
                 .Include(i => i.Account)
                 .Include(i => i.PaymentType)

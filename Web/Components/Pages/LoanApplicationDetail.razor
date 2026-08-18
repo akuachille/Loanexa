@@ -372,7 +372,7 @@
                                     <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">@t.TransactionDate.ToString("yyyy-MM-dd HH:mm")</td>
                                     <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">
                                         <MudChip T="string" Size="Size.Small" Color="@GetTransactionColor(t.TransactionType)" Class="ml-0">
-                                            @t.TransactionType
+                                            @(t.TransactionType == "Process Fee" ? "Processing Fee" : t.TransactionType)
                                         </MudChip>
                                     </td>
                                     <td style="padding: 12px 16px; font-size: 13px; font-weight: 500;">@t.Description</td>

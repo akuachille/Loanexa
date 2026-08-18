@@ -3,6 +3,7 @@ using Application.Interfaces;
 using Domain.Entities;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Domain.ValueObjects;
 
 namespace Infrastructure.Repositories 
 {
@@ -94,10 +95,56 @@ namespace Infrastructure.Repositories
             dbContext.Accounts.Add(Account);
             await dbContext.SaveChangesAsync();
         }
-    
 
-    
+        public async Task TransferFundsAsync(int fromAccountId, int toAccountId, decimal amount, string description)
+        {
+            if (_userContext.Id == null)
+            {
+                throw new Exception("User not authenticated");
+            }
+            if (fromAccountId == toAccountId)
+            {
+                throw new Exception("Cannot transfer to the same account");
+            }
+            if (amount <= 0)
+            {
+                throw new Exception("Transfer amount must be greater than zero");
+            }
+
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            
+            var fromAccount = await dbContext.Accounts.FirstOrDefaultAsync(a => a.Id == fromAccountId && a.PersonId == _userContext.PersonId);
+            var toAccount = await dbContext.Accounts.FirstOrDefaultAsync(a => a.Id == toAccountId && a.PersonId == _userContext.PersonId);
+
+            if (fromAccount == null) throw new Exception("Source account not found or access denied.");
+            if (toAccount == null) throw new Exception("Destination account not found or access denied.");
+
+            if (fromAccount.Balance < amount)
+            {
+                throw new Exception($"Insufficient Funds! Required: {amount:N2}, Balance: {fromAccount.Balance:N2}");
+            }
+
+            using var transaction = await dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                fromAccount.Balance -= amount;
+                toAccount.Balance += amount;
+
+                dbContext.ActivityLogs.Add(ActivityLogFactory.Create(
+                    _userContext,
+                    "Internal Transfer",
+                    nameof(Account),
+                    fromAccountId.ToString(),
+                    $"Transferred {amount:N2} from {fromAccount.Name} to {toAccount.Name}. Notes: {description}"));
+
+                await dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
     }
-    
 }
-

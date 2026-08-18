@@ -8,6 +8,7 @@
 @using Application.Services.PaymentTypes
 @using Application.Services.Accounts
 @using Domain.ValueObjects
+@using System.IO
 @inject IDialogService DialogService
 @inject IPaymentService PaymentService
 @inject IDisbursementService DisbursementService
@@ -112,6 +113,32 @@
                     </MudSelect>
                 </MudItem>
 
+                @* --- PROOF OF PAYMENT --- *@
+                <MudItem xs="12">
+                    <MudFileUpload T="IBrowserFile" OnFilesChanged="UploadProofOfPayment">
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.CloudUpload">
+                                Attach Proof of Payment
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+                    @if (!string.IsNullOrEmpty(Model.ProofOfPaymentFileName))
+                    {
+                        <div class="d-flex align-center mt-2">
+                            <MudText Typo="Typo.caption" Color="Color.Success" Class="d-flex align-center gap-1">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+                                @Model.ProofOfPaymentFileName
+                            </MudText>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                           Color="Color.Error" 
+                                           Size="Size.Small" 
+                                           OnClick="CancelProofUpload" />
+                        </div>
+                    }
+                </MudItem>
+
                 @* --- DYNAMIC STATUS ALERTS --- *@
                 <MudItem xs="12">
                     @if (Model.DisbursementId > 0)
@@ -122,7 +149,7 @@
                         {
                             var rate = selectedDisbursement?.LoanApplication?.LoanProductSetting?.PenalityRate ?? 0;
                             <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Style="border-radius: 8px;">
-                                <b>LATE PENALTY (@rate%):</b> @CalculatedPenalty.ToString("n") will be added due to late payment/shortfall.
+                                <b>LATE PENALTY (@rate%):</b> @CalculatedPenalty.ToString("n") will be added due to late payment.
                             </MudAlert>
                         }
                     }
@@ -165,9 +192,9 @@
             var selected = Disbursements.FirstOrDefault(d => d.Id == Model.DisbursementId);
             var rate = selected?.LoanApplication?.LoanProductSetting?.PenalityRate ?? 0;
             
-            if (DateTime.Today > ExpectedDueDate || Shortfall > 0)
+            if (DateTime.Today > ExpectedDueDate)
             {
-                return Shortfall * (rate / 100m);
+                return ExpectedAmount * (rate / 100m);
             }
             return 0;
         }
@@ -217,6 +244,33 @@
         Model.Amount = 0;
     }
 
+    private async Task UploadProofOfPayment(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            try
+            {
+                long maxFileSize = 1024 * 1024 * 5; // 5MB limit
+                using var stream = file.OpenReadStream(maxFileSize);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                Model.ProofOfPayment = ms.ToArray();
+                Model.ProofOfPaymentFileName = file.Name;
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error reading file: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private void CancelProofUpload()
+    {
+        Model.ProofOfPayment = null;
+        Model.ProofOfPaymentFileName = null;
+    }
+
     private async Task OnValidSubmit() {
         if (Model.DisbursementId == 0 || Model.AccountId == 0 || Model.PaymentTypeId == 0) {
             Snackbar.Add("Please fill all required fields.", Severity.Warning);
@@ -231,8 +285,8 @@
                 var selected = Disbursements.FirstOrDefault(d => d.Id == Model.DisbursementId);
                 var rate = selected?.LoanApplication?.LoanProductSetting?.PenalityRate ?? 0;
                 
-                Snackbar.Add($"Late payment/Shortfall detected. {rate}% Penalty ({CalculatedPenalty:n}) added to loan balance.", Severity.Warning);
-                await PaymentService.CreatePaymentWithPenaltyAsync(Model, Shortfall, CalculatedPenalty);
+                Snackbar.Add($"Late payment detected. {rate}% Penalty ({CalculatedPenalty:n}) added to loan balance.", Severity.Warning);
+                await PaymentService.CreatePaymentWithPenaltyAsync(Model, ExpectedAmount, CalculatedPenalty);
             } 
             else 
             {

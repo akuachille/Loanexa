@@ -32,9 +32,9 @@ namespace Application.Services.Accounts
             await _account.CreateAccountAsync(accountDTO);
         }
 
-        // public async Task UpdateAccountAsync(int id, AccountUpdateDTO accountDTO)
-        // {
-        //     await _account.UpdateAccountAsync(id, accountDTO);
-        // }
+        public async Task TransferFundsAsync(int fromAccountId, int toAccountId, decimal amount, string description)
+        {
+            await _account.TransferFundsAsync(fromAccountId, toAccountId, amount, description);
+        }
     }
 }

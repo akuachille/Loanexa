@@ -23,5 +23,8 @@ namespace Application.DTO
 
     [Required(ErrorMessage = "Date is required")]
     public DateTime? PaymentDate  { get; set; } = DateTime.Today; // Defaults to Today's date     
+
+    public byte[]? ProofOfPayment { get; set; }
+    public string? ProofOfPaymentFileName { get; set; }
     }
 }

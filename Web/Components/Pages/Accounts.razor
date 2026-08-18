@@ -58,9 +58,7 @@
             {
                 <MudText Color="Color.Primary" Typo="Typo.subtitle2">@_selectedItems.Count Selected</MudText>
                 <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" OnClick="@(() => OpenDetailDialog(_selectedItems.First().Id))" />
-                <AuthorizeView Roles="Tenant">
                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" />
-                </AuthorizeView>
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" />
                 <MudDivider Vertical="true" FlexItem="true" Class="mx-2" />
             }
@@ -94,6 +92,7 @@
           <ToolBarContent>
             <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight: bold;">Account</MudText>
             <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.SwapHoriz" Class="mr-2" OnClick="@(() => OpenTransferDialog())">Transfer Funds</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => OpenDialog())">Add Account</MudButton>
         </ToolBarContent>
 
@@ -101,10 +100,7 @@
             <SelectColumn T="Account" />
             <TemplateColumn>
                 <CellTemplate>
-                    @* <MudStack Row="true" AlignItems="AlignItems.Center">
-                        <MudAvatar Size="Size.Small"><MudImage Src="@context.Item.AvatarUrl" /></MudAvatar>
-                        <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Item.FirstName</MudText>
-                    </MudStack> *@
+                 
                 </CellTemplate>
             </TemplateColumn>
             <PropertyColumn Property="x => x.Name" Title="Name" />
@@ -152,7 +148,6 @@
          await LoadAccount();
          
     }
-    
     private async Task OpenDialog()
     {
         DialogOptions options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
@@ -166,6 +161,20 @@
              await LoadAccount();
         }
     }
+    
+    private async Task OpenTransferDialog()
+    {
+        DialogOptions options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
+
+        var dialog = await DialogService.ShowAsync<TransferFundsDialog>("Transfer Funds", options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+             await LoadAccount();
+        }
+    }
+    
      private async Task LoadAccount()
     {
         _accounts = (await AccountService.GetAllAccountsAsync()).OrderByDescending(x => x.Id).ToList();
@@ -188,8 +197,4 @@
         var parameters = new DialogParameters<AccountDetailDialog> { { x => x.Id, id } };
         await DialogService.ShowAsync<AccountDetailDialog>("View Details", parameters);
     }
-
-
-
-
 }

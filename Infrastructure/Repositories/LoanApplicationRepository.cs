@@ -21,7 +21,7 @@ namespace Infrastructure.Repositories
          _userContext = userContext;
          _emailService = emailService;
         }
-        public  async Task<List<LoanApplication>> GetAllLoanApplicationsAsync()
+        public async Task<List<LoanApplication>> GetAllLoanApplicationsAsync()
         {
             using var dbContext = await _contextFactory.CreateDbContextAsync();
             if (_userContext.Id == null)
@@ -30,6 +30,7 @@ namespace Infrastructure.Repositories
             }
             var allowedPersonIds = await _userContext.GetAllowedPersonIdsAsync();
             return await dbContext.LoanApplications
+                .AsNoTracking()
                 .Include(a => a.LoanProductSetting)
                     .ThenInclude(s => s.LoanProduct)
                 .Include(a => a.Borrower)
@@ -37,7 +38,7 @@ namespace Infrastructure.Repositories
                 .Where(a => allowedPersonIds.Contains(a.PersonId))
                 .OrderByDescending(x => x.Id).ToListAsync();
         }
-        public async Task <LoanApplication> GetLoanApplicationById(int Id)
+        public async Task<LoanApplication> GetLoanApplicationById(int Id)
         {
             if (_userContext.Id == null)
             {
@@ -46,6 +47,7 @@ namespace Infrastructure.Repositories
             using var dbContext = await _contextFactory.CreateDbContextAsync();
             var allowedPersonIds = await _userContext.GetAllowedPersonIdsAsync();
             return await dbContext.LoanApplications
+                .AsNoTracking()
                 .Include(a => a.LoanProductSetting)
                     .ThenInclude(s => s.LoanProduct)
                 .Include(a => a.Borrower)
@@ -316,9 +318,29 @@ public async Task<List<TransactionHistoryDTO>> GetTransactionHistoryAsync(int lo
             TransactionDate = p.PaymentDate,
             TransactionType = "Payment",
             Amount = p.Amount,
+            PrincipalPaid = p.PrincipalPaid,
+            InterestPaid = p.InterestPaid,
+            PenaltyPaid = p.PenaltyPaid,
+            Status = p.Status ?? string.Empty,
             Description = $"Loan Payment ({p.PaymentType?.PaymentTypeName ?? "Standard"})"
         }));
     }
+
+    // 4. Penalties
+    var penalties = await dbContext.Penalties
+        .Include(p => p.Reason)
+        .Where(p => p.LoanApplicationId == loanApplicationId && p.IsActive)
+        .OrderByDescending(x => x.Id).ToListAsync();
+
+    history.AddRange(penalties.Select(p => new TransactionHistoryDTO
+    {
+        TransactionDate = p.Date,
+        TransactionType = "Penalty",
+        Amount = p.Amount,
+        Description = string.IsNullOrEmpty(p.Description) 
+            ? $"Penalty Applied ({p.Reason?.Name ?? "Unknown Reason"})" 
+            : $"Penalty Applied: {p.Description}"
+    }));
 
     return history.OrderByDescending(t => t.TransactionDate).ToList();
 }
