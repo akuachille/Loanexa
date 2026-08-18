@@ -3,23 +3,25 @@
 @using Application.Services.Penalities   
 @using Application.Services.LoanApplications
 @using MudBlazor
+@using Application.Services.Disbursements
 @inject IPenalityService PenalityService
 @inject ILoanApplicationService LoanApplicationService
 @inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject IDisbursementService DisbursementService
+@inject ISnackbar Snackbar
 
 <PageTitle>Penalty</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-8">
-    @* --- DESIGN ADDITION: HEADER AREA --- *@
-    @* <div class="d-flex align-center justify-space-between mb-6">
-        <MudText Typo="Typo.h5" Style="font-weight: 800; color: #1B2559;">Penalty Management</MudText>
-    </div> *@
-
     @* --- DESIGN ADDITION: ACTION BAR --- *@
     <MudGrid Class="mb-4" Spacing="2">
         <MudItem xs="12" Class="d-flex align-center justify-end gap-4">
             @if (_selectedItems.Any())
             {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Payment" Class="rounded-pill px-6" Style="text-transform:none; font-weight: 600;" OnClick="GoToPayPenalty">
+                    Pay Penalty
+                </MudButton>
                 <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" Class="rounded-pill px-6" Style="text-transform:none; font-weight: 600;">
                     Delete Selected (@_selectedItems.Count)
                 </MudButton>
@@ -35,10 +37,13 @@
                  Items="@_penalties" 
                  MultiSelection="true" 
                  @bind-SelectedItems="_selectedItems"
-                 Hover="true" 
-                 Elevation="0"
-                 Class="mud-elevation-0 custom-datagrid border-solid border-2 mud-border-lines-default rounded-xl overflow-hidden">
-                 
+                 Class="rounded-xl border-none shadow-sm">   
+
+        <ToolBarContent>
+            <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: bold;">Penalties List</MudText>
+            <MudSpacer />
+        </ToolBarContent>
+
         <Columns>
             <SelectColumn T="Penality" />
             <PropertyColumn Property="x => x.Id" Title="ID" />
@@ -105,10 +110,45 @@
 
     private async Task GoToCreatePenality()
     {
-        // Keeping logic consistent with your other pages
         DialogOptions options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
 
         var dialog = await DialogService.ShowAsync<CreatePenality>("Add Penalty", options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await Task.Delay(50);
+            await LoadPenalties();
+        }
+    }
+
+    private async Task GoToPayPenalty()
+    {
+        if (!_selectedItems.Any())
+        {
+            Snackbar.Add("Please select a penalty to pay.", Severity.Warning);
+            return;
+        }
+
+        var penality = _selectedItems.First();
+        var allDisbursements = await DisbursementService.GetAllDisbursementsAsync();
+        var disbursement = allDisbursements.FirstOrDefault(d => d.LoanApplicationId == penality.LoanApplicationId);
+
+        if (disbursement == null)
+        {
+            Snackbar.Add("Disbursement not found for this penalty.", Severity.Warning);
+            return;
+        }
+
+        DialogOptions options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters<CreatePayment>
+        {
+            { x => x.PreselectedDisbursementId, disbursement.Id },
+            { x => x.PreselectedAmount, penality.Amount },
+            { x => x.IsPenaltyPayment, true }
+        };
+
+        var dialog = await DialogService.ShowAsync<CreatePayment>("Pay Penalty", parameters, options);
         var result = await dialog.Result;
 
         if (result != null && !result.Canceled)

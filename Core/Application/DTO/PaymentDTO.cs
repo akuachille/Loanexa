@@ -26,5 +26,6 @@ namespace Application.DTO
 
     public byte[]? ProofOfPayment { get; set; }
     public string? ProofOfPaymentFileName { get; set; }
+    public bool IsPenaltyPayment { get; set; }
     }
 }

@@ -77,19 +77,13 @@ namespace Infrastructure.Repositories
                 
                 account.Balance += paymentDTO.Amount;
 
-                // 7. Calculate Penalty, Interest vs Principal
+                // 6. Calculate Interest, Penalty vs Principal
                 decimal penaltyPart = 0;
                 decimal interestPart = 0;
                 decimal principalPart = 0;
                 decimal remainingPayment = paymentDTO.Amount;
 
-                decimal totalPenalties = await context.Penalties.Where(p => p.LoanApplicationId == disbursement.LoanApplicationId && p.IsActive).SumAsync(p => p.Amount);
-                decimal totalPenaltyPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.PenaltyPaid);
-                decimal unpaidPenalties = Math.Max(0, totalPenalties - totalPenaltyPaid);
-
-                penaltyPart = Math.Min(remainingPayment, unpaidPenalties);
-                remainingPayment -= penaltyPart;
-
+                // 1. Interest
                 if (disbursement.TotalInstallments > 0 && remainingPayment > 0)
                 {
                     decimal totalInterest = disbursement.PrincipalOffered * (disbursement.InterestRate / 100);
@@ -100,9 +94,20 @@ namespace Infrastructure.Repositories
                     remainingPayment -= interestPart;
                 }
 
+                // 2. Penalty
+                if (remainingPayment > 0)
+                {
+                    decimal totalPenalties = await context.Penalties.Where(p => p.LoanApplicationId == disbursement.LoanApplicationId && p.IsActive).SumAsync(p => p.Amount);
+                    decimal totalPenaltyPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.PenaltyPaid);
+                    decimal unpaidPenalties = Math.Max(0, totalPenalties - totalPenaltyPaid);
+
+                    penaltyPart = Math.Min(remainingPayment, unpaidPenalties);
+                    remainingPayment -= penaltyPart;
+                }
+
+                // 3. Principal
                 principalPart = remainingPayment;
 
-                // 8. Create Payment Record
                 var payment = new Payment
                 {
                     DisbursementId = paymentDTO.DisbursementId,
@@ -194,42 +199,45 @@ namespace Infrastructure.Repositories
                 if (account == null) throw new Exception("Target account not found.");
                 account.Balance += paymentDTO.Amount;
 
-                // 3. Get actual penalty rate from Product Settings for the description
+                // 3. Get actual penalty rate from Product Settings for the description and calculation
                 decimal rate = disbursement.LoanApplication?.LoanProductSetting?.PenalityRate ?? 0;
+                
+                // Recalculate penalty amount if it was passed as 0 (using the dynamic rate on the remaining installment balance)
+                if (penaltyAmount == 0) 
+                {
+                    penaltyAmount = shortfall * (rate / 100m);
+                }
+
+                // Guard: Get a valid ReasonId
+                var lateReason = await context.Reasons.FirstOrDefaultAsync(r => r.Name.Contains("Late") || r.Name.Contains("Overdue"));
+                if (lateReason == null) lateReason = await context.Reasons.FirstOrDefaultAsync();
+                
+                int validReasonId = lateReason?.Id ?? 0;
+                if (validReasonId <= 0)
+                    throw new Exception("Please create at least one Penalty Reason in the system before generating penalties.");
 
                 var penalty = new Penality
                 {
                     LoanApplicationId = disbursement.LoanApplicationId,
+                    PersonId = user.Person.Id,
                     Amount = penaltyAmount,
                     Date = DateTime.Now,
-                    ReasonId = 1, 
-                    Description = $"Penalty ({rate}%). Shortfall: {shortfall:N2}.",
+                    ReasonId = validReasonId, 
+                    Description = $"Penalty ({rate}%). Remaining Installment Balance: {shortfall:N2}.",
                     IsActive = true
                 };
                 context.Penalties.Add(penalty);
 
                 // 5. Add Penalty to the Loan Balance (Reflected in Loan Details)
-                // We add ONLY the penaltyAmount. The shortfall is already part of the principal.
                 disbursement.Amount += penaltyAmount;
 
-                // 6. Calculate Penalty, Interest vs Principal
+                // 6. Calculate Interest, Penalty vs Principal
                 decimal penaltyPart = 0;
                 decimal interestPart = 0;
                 decimal principalPart = 0;
                 decimal remainingPayment = paymentDTO.Amount;
 
-                // Note: The new penalty has already been added to context.Penalties in memory, 
-                // but since it's not saved yet, we add its amount to the sum from DB, OR we save changes first.
-                // It's safer to query the DB and add the newly created penalty amount.
-                decimal totalPenalties = await context.Penalties.Where(p => p.LoanApplicationId == disbursement.LoanApplicationId && p.IsActive).SumAsync(p => p.Amount);
-                totalPenalties += penaltyAmount; // Add the one we just created in memory
-                
-                decimal totalPenaltyPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.PenaltyPaid);
-                decimal unpaidPenalties = Math.Max(0, totalPenalties - totalPenaltyPaid);
-
-                penaltyPart = Math.Min(remainingPayment, unpaidPenalties);
-                remainingPayment -= penaltyPart;
-
+                // 1. Interest
                 if (disbursement.TotalInstallments > 0 && remainingPayment > 0)
                 {
                     decimal totalInterest = disbursement.PrincipalOffered * (disbursement.InterestRate / 100);
@@ -240,6 +248,20 @@ namespace Infrastructure.Repositories
                     remainingPayment -= interestPart;
                 }
 
+                // 2. Penalty
+                if (remainingPayment > 0)
+                {
+                    decimal totalPenalties = await context.Penalties.Where(p => p.LoanApplicationId == disbursement.LoanApplicationId && p.IsActive).SumAsync(p => p.Amount);
+                    totalPenalties += penaltyAmount; // Add the one we just created in memory
+                    
+                    decimal totalPenaltyPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.PenaltyPaid);
+                    decimal unpaidPenalties = Math.Max(0, totalPenalties - totalPenaltyPaid);
+
+                    penaltyPart = Math.Min(remainingPayment, unpaidPenalties);
+                    remainingPayment -= penaltyPart;
+                }
+
+                // 3. Principal
                 principalPart = remainingPayment;
 
                 // 7. Create the Payment Record

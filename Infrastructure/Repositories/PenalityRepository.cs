@@ -24,15 +24,50 @@ namespace Infrastructure.Repositories
             {
                 return new List<Penality>();
             }
-            return await context.Penalties
+            var penalties = await context.Penalties
                 .AsNoTracking()
-                .Where(a => a.PersonId == _userContext.PersonId)
+                .Where(a => a.PersonId == _userContext.PersonId && a.IsActive)
                 .Include(i => i.LoanApplication)
                 .ThenInclude(l => l.Borrower)
                 .Include(i => i.Reason)
-                .Where(p => p.IsActive)
-                .OrderByDescending(p => p.Date)
-                .OrderByDescending(x => x.Id).ToListAsync();
+                .OrderBy(p => p.Date)
+                .ToListAsync();
+
+            var loanAppIds = penalties.Select(p => p.LoanApplicationId).Distinct().ToList();
+            
+            var disbursements = await context.Disbursements
+                .AsNoTracking()
+                .Where(d => loanAppIds.Contains(d.LoanApplicationId) && d.IsActive)
+                .Include(d => d.Payments)
+                .ToListAsync();
+
+            var unpaidPenalties = new List<Penality>();
+
+            foreach (var appId in loanAppIds)
+            {
+                var appPenalties = penalties.Where(p => p.LoanApplicationId == appId).OrderBy(p => p.Date).ToList();
+                var appDisbursements = disbursements.Where(d => d.LoanApplicationId == appId).ToList();
+                decimal totalPenaltyPaid = appDisbursements.SelectMany(d => d.Payments).Where(p => p.IsActive).Sum(p => p.PenaltyPaid);
+
+                foreach (var penalty in appPenalties)
+                {
+                    if (totalPenaltyPaid >= penalty.Amount)
+                    {
+                        totalPenaltyPaid -= penalty.Amount;
+                    }
+                    else
+                    {
+                        if (totalPenaltyPaid > 0)
+                        {
+                            penalty.Amount -= totalPenaltyPaid;
+                            totalPenaltyPaid = 0;
+                        }
+                        unpaidPenalties.Add(penalty);
+                    }
+                }
+            }
+
+            return unpaidPenalties.OrderByDescending(p => p.Date).OrderByDescending(x => x.Id).ToList();
         }
 
         public async Task<Penality?> GetPenalityByIdAsync(int id)
