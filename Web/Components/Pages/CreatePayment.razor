@@ -172,6 +172,10 @@
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
     
+    [Parameter] public int? PreselectedDisbursementId { get; set; }
+    [Parameter] public decimal? PreselectedAmount { get; set; }
+    [Parameter] public bool IsPenaltyPayment { get; set; }
+    
     private CreatePaymentDTO Model { get; set; } = new() { PaymentDate = DateTime.Today };
     private List<Disbursement> Disbursements = new();
     private List<Account> Accounts = new(); 
@@ -215,6 +219,17 @@
             
         PaymentTypes = tTask.Result ?? new();
         Accounts = aTask.Result ?? new(); 
+        
+        if (PreselectedDisbursementId.HasValue)
+        {
+            await OnDisbursementChanged(PreselectedDisbursementId.Value);
+        }
+        
+        if (IsPenaltyPayment && PreselectedAmount.HasValue)
+        {
+            Model.Amount = PreselectedAmount.Value;
+            Model.IsPenaltyPayment = true;
+        }
     }
 
     private async Task OnDisbursementChanged(int id) {
@@ -280,18 +295,20 @@
         _isProcessing = true;
         
         try {
+            decimal remainingBalance = Math.Max(0, ExpectedAmount - (Model.Amount - CalculatedPenalty));
+
             if (CalculatedPenalty > 0) 
             {
                 var selected = Disbursements.FirstOrDefault(d => d.Id == Model.DisbursementId);
                 var rate = selected?.LoanApplication?.LoanProductSetting?.PenalityRate ?? 0;
                 
-                Snackbar.Add($"Late payment detected. {rate}% Penalty ({CalculatedPenalty:n}) added to loan balance.", Severity.Warning);
+                Snackbar.Add($"Late payment detected. {rate}% Penalty ({CalculatedPenalty:n}) added. Payment recorded. Remaining installment balance: {remainingBalance:n}", Severity.Warning);
                 await PaymentService.CreatePaymentWithPenaltyAsync(Model, ExpectedAmount, CalculatedPenalty);
             } 
             else 
             {
                 await PaymentService.CreatePaymentAsync(Model);
-                Snackbar.Add("Payment recorded successfully.", Severity.Success);
+                Snackbar.Add($"Payment recorded successfully. Remaining installment balance: {remainingBalance:n}", Severity.Success);
             }
 
             MudDialog.Close(DialogResult.Ok(true));

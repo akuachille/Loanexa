@@ -84,7 +84,10 @@ namespace Application.Services.Penalities
                         totalPaidPool = 0;
                     }
 
-                    if (DateTime.Now.Date > dueDate.Date && amountPaidForInstallment < scheduledPayment)
+                    int gracePeriod = (int)(disbursement.LoanApplication?.LoanProductSetting?.GracePeriodDays ?? 0);
+                    DateTime dueDateWithGrace = dueDate.AddDays(gracePeriod);
+
+                    if (DateTime.Now.Date > dueDateWithGrace.Date && amountPaidForInstallment < scheduledPayment)
                     {
                         decimal shortfall = scheduledPayment - amountPaidForInstallment;
                         int installmentNo = i + 1;

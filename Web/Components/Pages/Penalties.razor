@@ -2,8 +2,12 @@
 @using Domain.Entities
 @using Application.Services.Penalities   
 @using MudBlazor
+@using Application.Services.Disbursements
 @inject IPenalityService PenalityService
 @inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject IDisbursementService DisbursementService
+@inject ISnackbar Snackbar
 
 <PageTitle>Penalty</PageTitle>
 
@@ -38,7 +42,7 @@
         <ToolBarContent>
             <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: bold;">Penalties List</MudText>
             <MudSpacer />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => GoToCreatePenality())">Add Penalty</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Payment" Disabled="@(!_selectedItems.Any())" OnClick="@(() => GoToPayPenalty())">Pay Penalty</MudButton>
         </ToolBarContent>
 
         <Columns>
@@ -86,12 +90,33 @@
         StateHasChanged();
     }
 
-    private async Task GoToCreatePenality()
+    private async Task GoToPayPenalty()
     {
-        // Keeping logic consistent with your other pages
-        DialogOptions options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        if (!_selectedItems.Any())
+        {
+            Snackbar.Add("Please select a penalty to pay.", Severity.Warning);
+            return;
+        }
 
-        var dialog = await DialogService.ShowAsync<CreatePenality>("Add Penalty", options);
+        var penality = _selectedItems.First();
+        var allDisbursements = await DisbursementService.GetAllDisbursementsAsync();
+        var disbursement = allDisbursements.FirstOrDefault(d => d.LoanApplicationId == penality.LoanApplicationId);
+
+        if (disbursement == null)
+        {
+            Snackbar.Add("Disbursement not found for this penalty.", Severity.Warning);
+            return;
+        }
+
+        DialogOptions options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters<CreatePayment>
+        {
+            { x => x.PreselectedDisbursementId, disbursement.Id },
+            { x => x.PreselectedAmount, penality.Amount },
+            { x => x.IsPenaltyPayment, true }
+        };
+
+        var dialog = await DialogService.ShowAsync<CreatePayment>("Pay Penalty", parameters, options);
         var result = await dialog.Result;
 
         if (result != null && !result.Canceled)

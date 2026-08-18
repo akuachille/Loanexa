@@ -25,21 +25,16 @@ namespace Application.Services.Payments
             DateTime today = DateTime.Today; 
             bool isAfterDueDate = today > dueDate;
             
-            // 2. Calculate the Shortfall
-            decimal shortfall = expectedAmount - paymentDTO.Amount;
-
-            // 3. Execution Logic with 2% Penalty
-            if (isAfterDueDate && shortfall > 0)
+            // 2. We calculate penalty on the remaining balance of the installment (expectedAmount)
+            if (isAfterDueDate && expectedAmount > 0 && !paymentDTO.IsPenaltyPayment)
             {
-                // SCENARIO: Payment is late and doesn't cover the scheduled amount.
-                // Updated to 2% as requested
-                decimal penaltyAmount = shortfall * 0.02m; 
-
-                await _payment.CreatePaymentWithPenaltyAsync(paymentDTO, shortfall, penaltyAmount);
+                // SCENARIO: Payment is late. Apply dynamic penalty rate on the installment's remaining balance.
+                // We pass expectedAmount as the "shortfall/balance" and 0 for penaltyAmount so the repository computes it using the dynamic rate.
+                await _payment.CreatePaymentWithPenaltyAsync(paymentDTO, expectedAmount, 0);
             }
             else
             {
-                // SCENARIO: On-time payment, overpayment, or clearing the balance.
+                // SCENARIO: On-time payment, overpayment, or clearing the balance, or explicit penalty payment.
                 await _payment.CreatePaymentAsync(paymentDTO);
             }
         }

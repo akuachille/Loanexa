@@ -367,14 +367,14 @@
         decimal totalInterest = disbursement.PrincipalOffered * (disbursement.InterestRate / 100);
         decimal interestPart = totalInterest / disbursement.TotalInstallments;
         
-        decimal totalPenalty = disbursement.Amount - (disbursement.PrincipalOffered + totalInterest);
-        decimal penaltyPart = totalPenalty / disbursement.TotalInstallments;
+        // Base scheduled payment without penalties
+        decimal scheduledPayment = (disbursement.PrincipalOffered + totalInterest) / disbursement.TotalInstallments;
         
-        decimal scheduledPayment = disbursement.Amount / disbursement.TotalInstallments;
-        
-        decimal remainingBalance = disbursement.Amount;
         var paymentsByInstallment = GetPaymentsByInstallment(disbursement.Id);
+        // We look at the actual paid amount to distribute it to installments
         decimal totalPaidPool = paymentsByInstallment.Sum(p => p.Amount);
+
+        decimal penaltyRate = disbursement.LoanApplication?.LoanProductSetting?.PenalityRate ?? 0;
 
         for (int i = 0; i < disbursement.TotalInstallments; i++)
         {
@@ -399,9 +399,22 @@
                 totalPaidPool = 0;
             }
 
-            decimal remainingForThis = scheduledPayment - amountPaidForInstallment;
+            decimal remainingForThis = Math.Max(0, scheduledPayment - amountPaidForInstallment);
+            decimal penaltyForThis = 0;
+
+            // Only calculate penalty if the installment is overdue and still has a remaining balance
+            if (DateTime.Now.Date > dueDate.Date && remainingForThis > 0)
+            {
+                penaltyForThis = remainingForThis * (penaltyRate / 100m);
+            }
+
+            // The total scheduled payment for this specific installment including its penalty
+            decimal finalScheduledPayment = scheduledPayment + penaltyForThis;
             
-            string status = amountPaidForInstallment >= scheduledPayment ? "PAID" :
+            // Adjust remaining balance to include the penalty if not paid
+            decimal finalRemainingForThis = remainingForThis + penaltyForThis;
+
+            string status = amountPaidForInstallment >= finalScheduledPayment ? "PAID" :
                            amountPaidForInstallment > 0 ? "PARTIAL" :
                            DateTime.Now.Date > dueDate.Date ? "OVERDUE" : "PENDING";
 
@@ -411,10 +424,10 @@
                 DueDate = dueDate,
                 PrincipalScheduled = principalPart,
                 InterestScheduled = interestPart,
-                PenaltyScheduled = penaltyPart,
-                ScheduledPayment = scheduledPayment,
+                PenaltyScheduled = penaltyForThis,
+                ScheduledPayment = finalScheduledPayment,
                 AmountPaid = amountPaidForInstallment,
-                RemainingBalance = remainingForThis > 0 ? remainingForThis : 0,
+                RemainingBalance = finalRemainingForThis,
                 StatusFlag = status
             });
         }

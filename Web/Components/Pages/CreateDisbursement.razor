@@ -197,21 +197,10 @@
                 <MudItem xs="12" sm="4">
                     <MudNumericField T="decimal" Label="Net Disbursed Amount" Value="@NetDisbursedAmount"
                                      Variant="Variant.Outlined" Margin="Margin.Dense"
-                                    
                                      Immediate="true" />
                 </MudItem>
 
 
-
-                <MudItem xs="12" sm="4">
-                    <MudNumericField T="decimal" Label="Disbursed Amount" Value="@(Model.PrincipalOffered - Model.ProcessingFeeAmount)"
-                                     Variant="Variant.Outlined" Margin="Margin.Dense"
-                                     ReadOnly="true"
-                                    
-                                     />
-                </MudItem>
-
-                @* 5. CALCULATION RESULT *@
                 <MudItem xs="12">
                      <MudNumericField T="decimal" Label="Total Repayable" @bind-Value="Model.Amount"
                                       Variant="Variant.Filled" Margin="Margin.Dense" ReadOnly="true"
@@ -219,7 +208,6 @@
                                       />
                 </MudItem>
 
-                @* 6. PREVIEW TABLE *@
                 <MudItem xs="12">
                     <MudText Typo="Typo.subtitle2" Class="mb-2" Style="font-weight:700; color:#3F51B5;">
                         Schedule Preview (@Model.TotalInstallments Payments of @(Model.TotalInstallments > 0 ? (Model.Amount / Model.TotalInstallments).ToString("n") : "0"))
