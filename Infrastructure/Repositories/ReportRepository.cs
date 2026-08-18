@@ -373,8 +373,11 @@ namespace Infrastructure.Repositories
 
                 if (isOverdue)
                 {
-                    var daysPastDue = (DateTime.Now.Date - overdueDate.Date).Days;
-                    string risk = daysPastDue > 90 ? "90+" : (daysPastDue > 60 ? "61-90" : (daysPastDue > 30 ? "31-60" : "1-30"));
+                    double gracePeriodDays = (double)(d.LoanApplication?.LoanProductSetting?.GracePeriodDays ?? 0);
+                    DateTime effectiveDueDate = overdueDate.AddDays(gracePeriodDays);
+                    var daysPastDue = (DateTime.Now.Date - effectiveDueDate.Date).Days;
+                    
+                    string risk = daysPastDue >= 90 ? "Written-Off" : (daysPastDue >= 30 ? "Defaulter" : "Trustable");
 
                     overdueList.Add(new OverdueReportDTO
                     {

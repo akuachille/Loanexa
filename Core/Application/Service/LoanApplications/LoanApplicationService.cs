@@ -44,5 +44,10 @@ namespace  Application.Services.LoanApplications
         {
             await _loanApplication.DeleteLoanApplicationAsync(id);
         }
+
+        public async Task UpdateWrittenOffLoansAsync()
+        {
+            await _loanApplication.UpdateWrittenOffLoansAsync();
+        }
     }
 }

@@ -13,5 +13,6 @@ namespace Application.Services.LoanApplications
         Task UpdateStatusAsync(int id, LoanStatus newStatus);
         Task<List<TransactionHistoryDTO>> GetTransactionHistoryAsync(int loanApplicationId);
         Task DeleteLoanApplicationAsync(int id);
+        Task UpdateWrittenOffLoansAsync();
     }
 }

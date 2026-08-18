@@ -7,6 +7,7 @@ namespace Domain.ValueObjects
         Rejected,
         Disbursed,
         Paid,
-        Rescheduled
+        Rescheduled,
+        WrittenOff
     }
 }

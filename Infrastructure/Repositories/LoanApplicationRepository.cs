@@ -374,6 +374,82 @@ public async Task<List<TransactionHistoryDTO>> GetTransactionHistoryAsync(int lo
 
             await dbContext.SaveChangesAsync();
         }
+
+        public async Task UpdateWrittenOffLoansAsync()
+        {
+            using var dbContext = await _contextFactory.CreateDbContextAsync();
+            
+            var loans = await dbContext.Disbursements
+                .Include(d => d.LoanApplication).ThenInclude(la => la.LoanProductSetting)
+                .Include(d => d.PaymentModality)
+                .Include(d => d.Payments)
+                .Where(d => d.IsActive && d.LoanApplication.Status != LoanStatus.WrittenOff && d.LoanApplication.Status != LoanStatus.Paid && d.LoanApplication.Status != LoanStatus.Rejected)
+                .ToListAsync();
+
+            var updatedCount = 0;
+
+            foreach (var d in loans)
+            {
+                int totalInstallments = d.TotalInstallments > 0 ? d.TotalInstallments : 1;
+                decimal totalDuePerInstallment = d.Amount / totalInstallments;
+                string mode = (d.PaymentModality?.Mode ?? "monthly").ToLower();
+                decimal totalCollected = d.Payments.Where(p => p.IsActive).Sum(p => p.Amount);
+                decimal runningPaidAmount = totalCollected;
+                decimal balance = Math.Max(0, d.Amount - totalCollected);
+
+                if (balance <= 0.01m)
+                {
+                     continue;
+                }
+
+                DateTime overdueDate = DateTime.MinValue;
+                bool isOverdue = false;
+
+                for (int i = 0; i < totalInstallments; i++)
+                {
+                    DateTime dueDate = mode switch
+                    {
+                        "daily" => d.StartDate.AddDays(i),
+                        "weekly" => d.StartDate.AddDays(i * 7),
+                        "monthly" => d.StartDate.AddMonths(i),
+                        _ => d.StartDate.AddMonths(i)
+                    };
+
+                    if (runningPaidAmount >= totalDuePerInstallment)
+                    {
+                        runningPaidAmount -= totalDuePerInstallment;
+                    }
+                    else
+                    {
+                        if (dueDate.Date < DateTime.Now.Date)
+                        {
+                            isOverdue = true;
+                            if (overdueDate == DateTime.MinValue) overdueDate = dueDate;
+                        }
+                        runningPaidAmount = 0;
+                    }
+                }
+
+                if (isOverdue)
+                {
+                    double gracePeriodDays = (double)(d.LoanApplication?.LoanProductSetting?.GracePeriodDays ?? 0);
+                    DateTime effectiveDueDate = overdueDate.AddDays(gracePeriodDays);
+                    var daysPastDue = (DateTime.Now.Date - effectiveDueDate.Date).Days;
+                    
+                    if (daysPastDue >= 90)
+                    {
+                        d.LoanApplication.Status = LoanStatus.WrittenOff;
+                        dbContext.LoanApplications.Update(d.LoanApplication);
+                        updatedCount++;
+                    }
+                }
+            }
+
+            if (updatedCount > 0)
+            {
+                await dbContext.SaveChangesAsync();
+            }
+        }
     }
 }
 

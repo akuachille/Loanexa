@@ -11,6 +11,7 @@
 @inject IJSRuntime JSRuntime
 @inject IDialogService DialogService
 @inject NavigationManager NavigationManager
+@inject Application.Services.LoanApplications.ILoanApplicationService LoanApplicationService
 
 <PageTitle>Reports and Analytics</PageTitle>
 
@@ -1177,6 +1178,7 @@
 
     private async Task LoadNewReports()
     {
+        try { await LoanApplicationService.UpdateWrittenOffLoansAsync(); } catch { }
         try { _repaymentSchedules = await ReportService.GetRepaymentScheduleReportAsync(); } catch { }
         try { _overdues = await ReportService.GetOverdueReportAsync(); } catch { }
         try { _customerPortfolios = await ReportService.GetCustomerPortfolioReportAsync(); } catch { }

@@ -37,6 +37,7 @@ namespace Infrastructure.Repositories
             return await context.Disbursements
                 .AsNoTracking()
                 .Include(i => i.LoanApplication).ThenInclude(l => l.Borrower)
+                .Include(i => i.LoanApplication).ThenInclude(l => l.LoanProductSetting)
                 .Include(i => i.PaymentModality)
                 .Where(a => allowedPersonIds.Contains(a.PersonId))
                 .Include(i => i.Payments)

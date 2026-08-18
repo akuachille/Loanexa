@@ -1,8 +1,10 @@
 @page "/Penality"
 @using Domain.Entities
 @using Application.Services.Penalities   
+@using Application.Services.LoanApplications
 @using MudBlazor
 @inject IPenalityService PenalityService
+@inject ILoanApplicationService LoanApplicationService
 @inject IDialogService DialogService
 
 <PageTitle>Penalty</PageTitle>
@@ -18,44 +20,58 @@
         <MudItem xs="12" Class="d-flex align-center justify-end gap-4">
             @if (_selectedItems.Any())
             {
-                <MudText Color="Color.Primary" Typo="Typo.subtitle2">@_selectedItems.Count Selected</MudText>
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" />
-                <MudDivider Vertical="true" FlexItem="true" Class="mx-2" />
+                <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" Class="rounded-pill px-6" Style="text-transform:none; font-weight: 600;">
+                    Delete Selected (@_selectedItems.Count)
+                </MudButton>
             }
+            <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add" Class="rounded-pill px-6" Style="background-color: #4318FF; color: white; text-transform:none; font-weight: 600;" OnClick="GoToCreatePenality">
+                New Penalty
+            </MudButton>
         </MudItem>
     </MudGrid>
 
-    @* --- DATA GRID WITH UPDATED STYLING --- *@
+    @* --- DESIGN ADDITION: DATAGRID --- *@
     <MudDataGrid T="Penality" 
                  Items="@_penalties" 
-                 Hover="true" 
-                 Bordered="false" 
-                 Elevation="0" 
-                 MultiSelection="true"
+                 MultiSelection="true" 
                  @bind-SelectedItems="_selectedItems"
-                 Class="rounded-xl border-none shadow-sm">   
-
-        <ToolBarContent>
-            <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: bold;">Penalties List</MudText>
-            <MudSpacer />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => GoToCreatePenality())">Add Penalty</MudButton>
-        </ToolBarContent>
-
+                 Hover="true" 
+                 Elevation="0"
+                 Class="mud-elevation-0 custom-datagrid border-solid border-2 mud-border-lines-default rounded-xl overflow-hidden">
+                 
         <Columns>
             <SelectColumn T="Penality" />
-            <PropertyColumn Property="x => x.LoanApplication.ApplicationCode" Title="Loan Application" />
-            <PropertyColumn Property="x => x.Amount" Format="N2" Title="Penalty Amount" />
-            <PropertyColumn Property="x => x.Date" Title="Issue Date" Format="yyyy-MM-dd" />       
+            <PropertyColumn Property="x => x.Id" Title="ID" />
+            
+            <TemplateColumn Title="Applicant" Sortable="false">
+                <CellTemplate>
+                    <div class="d-flex align-center gap-3">
+                        <MudAvatar Size="Size.Small" Style="background-color: #E2E8F0; color: #475569; font-weight: 700; font-size: 12px;">
+                            @(context.Item.LoanApplication?.Borrower?.FirstName?.FirstOrDefault().ToString() ?? "A")
+                        </MudAvatar>
+                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: #1B2559;">
+                            @(!string.IsNullOrEmpty(context.Item.LoanApplication?.Borrower?.CompanyName) ? context.Item.LoanApplication.Borrower.CompanyName : $"{context.Item.LoanApplication?.Borrower?.FirstName} {context.Item.LoanApplication?.Borrower?.LastName}")
+                        </MudText>
+                    </div>
+                </CellTemplate>
+            </TemplateColumn>
+
             <PropertyColumn Property="x => x.Reason.Name" Title="Reason" />
             <PropertyColumn Property="x => x.Description" Title="Description" />
             
+            <PropertyColumn Property="x => x.Amount" Title="Amount">
+                <CellTemplate>
+                    <MudText Typo="Typo.body2" Style="font-weight: 700; color: #ef4444;">
+                        @context.Item.Amount.ToString("C")
+                    </MudText>
+                </CellTemplate>
+            </PropertyColumn>
+
             <TemplateColumn Title="Status">
                 <CellTemplate>
-                    <MudChip T="string" 
-                             Color="@(context.Item.IsActive ? Color.Success : Color.Error)" 
-                             Size="Size.Small" 
-                             Variant="Variant.Text"
-                             Style="font-weight: 600;">
+                    <MudChip T="string" Size="Size.Small" 
+                             Color="@(context.Item.IsActive ? Color.Error : Color.Success)" 
+                             Style="font-weight: 600; font-size: 11px; padding: 0 10px;">
                         @(context.Item.IsActive ? "Active" : "Inactive")
                     </MudChip>
                 </CellTemplate>
@@ -76,6 +92,7 @@
     
     protected override async Task OnInitializedAsync()
     {
+      await LoanApplicationService.UpdateWrittenOffLoansAsync();
       await PenalityService.GenerateAutomaticPenalitiesAsync();
       await LoadPenalties();
     }
