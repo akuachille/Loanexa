@@ -304,6 +304,25 @@ public async Task<List<TransactionHistoryDTO>> GetTransactionHistoryAsync(int lo
         Description = $"Loan Disbursement (Principal: {d.PrincipalOffered:N2})"
     }));
 
+    // Retroactively capture Prepaid Interest for older disbursements (before the patch)
+    // If Amount == PrincipalOffered and InterestRate > 0, it means interest was deducted upfront but not saved as a Payment.
+    var oldPrepayments = disbursements.Where(d => d.Amount == d.PrincipalOffered && d.InterestRate > 0).ToList();
+    history.AddRange(oldPrepayments.Select(d => 
+    {
+        decimal interest = d.PrincipalOffered * (d.InterestRate / 100);
+        return new TransactionHistoryDTO
+        {
+            TransactionDate = d.StartDate,
+            TransactionType = "Prepaid Interest",
+            Amount = interest,
+            PrincipalPaid = 0,
+            InterestPaid = interest,
+            PenaltyPaid = 0,
+            Status = "Completed",
+            Description = "Interest prepaid before disbursement (Legacy record)"
+        };
+    }));
+
     // 3. Payments
     var disbursementIds = disbursements.Select(d => d.Id).ToList();
     if (disbursementIds.Any())
@@ -316,7 +335,7 @@ public async Task<List<TransactionHistoryDTO>> GetTransactionHistoryAsync(int lo
         history.AddRange(payments.Select(p => new TransactionHistoryDTO
         {
             TransactionDate = p.PaymentDate,
-            TransactionType = "Payment",
+            TransactionType = p.PaymentType?.PaymentTypeName == "Prepaid Interest" ? "Prepaid Interest" : "Payment",
             Amount = p.Amount,
             PrincipalPaid = p.PrincipalPaid,
             InterestPaid = p.InterestPaid,

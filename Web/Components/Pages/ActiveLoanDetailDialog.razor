@@ -138,7 +138,7 @@
                                                     </div>
                                                 </div>
                                                 
-                                                @if (context.TransactionType == "Payment" && (context.PrincipalPaid > 0 || context.InterestPaid > 0 || context.PenaltyPaid > 0))
+                                                @if ((context.TransactionType == "Payment" || context.TransactionType == "Prepaid Interest") && (context.PrincipalPaid > 0 || context.InterestPaid > 0 || context.PenaltyPaid > 0))
                                                 {
                                                     <MudDivider Class="my-3" Style="border-color: #f1f5f9;" />
                                                     <MudGrid Spacing="2">

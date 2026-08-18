@@ -327,6 +327,34 @@ namespace Infrastructure.Repositories
                     context.ProcessFeeDeposits.Add(procFeeDeposit);
                 }
 
+                if (disbursementDTO.IsPrepayment && totalInterest > 0)
+                {
+                    var paymentType = await context.PaymentTypes.FirstOrDefaultAsync(pt => pt.PaymentTypeName == "Prepaid Interest");
+                    if (paymentType == null)
+                    {
+                        paymentType = new PaymentType { PaymentTypeName = "Prepaid Interest" };
+                        context.PaymentTypes.Add(paymentType);
+                    }
+
+                    var prepaidPayment = new Payment
+                    {
+                        Disbursement = disbursement,
+                        AccountId = disbursementDTO.AccountId,
+                        PersonId = loanApp.PersonId,
+                        PaymentType = paymentType,
+                        Amount = totalInterest,
+                        PrincipalPaid = 0,
+                        InterestPaid = totalInterest,
+                        PenaltyPaid = 0,
+                        PaymentDate = DateTime.UtcNow,
+                        Status = "Completed",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow,
+                        CreatedBy = _userContext.Id
+                    };
+                    context.Payments.Add(prepaidPayment);
+                }
+
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
