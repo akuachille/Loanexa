@@ -65,11 +65,11 @@ namespace Application.Services.Penalities
                 {
                     DateTime dueDate = disbursement.PaymentModality?.Mode?.ToLower() switch 
                     {
-                        "daily" => disbursement.StartDate.AddDays(i + 1),
-                        "weekly" => disbursement.StartDate.AddDays((i + 1) * 7),
-                        "monthly" => disbursement.StartDate.AddMonths(i + 1),
-                        "yearly" => disbursement.StartDate.AddYears(i + 1),
-                        _ => disbursement.StartDate.AddMonths(i + 1)
+                        "daily" => disbursement.StartDate.AddDays(i),
+                        "weekly" => disbursement.StartDate.AddDays(i * 7),
+                        "monthly" => disbursement.StartDate.AddMonths(i),
+                        "yearly" => disbursement.StartDate.AddYears(i),
+                        _ => disbursement.StartDate.AddMonths(i)
                     };
 
                     decimal amountPaidForInstallment = 0;

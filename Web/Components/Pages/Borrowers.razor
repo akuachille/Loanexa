@@ -202,7 +202,7 @@
     }
      private async Task LoadBorrower()
     {
-        _borrowers = (await BorrowerService.GetAllBorrowersAsync()).OrderByDescending(x => x.Id).ToList();
+        _borrowers = (await BorrowerService.GetAllBorrowersAsync()).OrderByDescending(x => x.TotalDebt).ToList();
         
         // Calculate borrower type counts
         _borrowerTypeCounts = _borrowers
