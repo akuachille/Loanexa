@@ -28,6 +28,16 @@ namespace Application.Services.Users
             await _identity.ApproveUserAsync(userId);
         }
 
+        public async Task<string> ResetPasswordToTemporaryAsync(int userId)
+        {
+            return await _identity.ResetPasswordToTemporaryAsync(userId);
+        }
+
+        public async Task CompletePasswordResetAsync(string email, string newPassword)
+        {
+            await _identity.CompletePasswordResetAsync(email, newPassword);
+        }
+
         public async Task RegisterUser(RegisterUserDTO dto)
         {
             await _identity.RegisterUser(dto);

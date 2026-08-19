@@ -40,6 +40,15 @@ namespace Infrastructure.Identity
                     return false;
                 }
 
+                if (user.RequiresPasswordReset)
+                {
+                    if (user.TemporaryPasswordExpiryTime.HasValue && DateTime.UtcNow > user.TemporaryPasswordExpiryTime.Value)
+                    {
+                        Console.WriteLine($"[Login] Temporary password expired for: {dto.Email}");
+                        throw new InvalidOperationException("Temporary password expired. Please contact the administrator for a new one.");
+                    }
+                }
+
                 var result = await _signInManager.PasswordSignInAsync(
                     user.UserName ?? dto.Email,
                     dto.Password,
@@ -53,12 +62,97 @@ namespace Infrastructure.Identity
                     throw new InvalidOperationException("Your account is pending approval by an administrator.");
                 }
 
+                if (result.Succeeded && user.RequiresPasswordReset)
+                {
+                    // If login is successful but they need to reset password, sign them out and throw exception
+                    await _signInManager.SignOutAsync();
+                    throw new InvalidOperationException("REQUIRES_PASSWORD_RESET");
+                }
+
                 Console.WriteLine($"[Login] Result for {dto.Email}: {result.Succeeded}");
                 return result.Succeeded;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[Login] Error: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<string> ResetPasswordToTemporaryAsync(int userId)
+        {
+            try
+            {
+                var user = await _userManager.FindByIdAsync(userId.ToString());
+                if (user == null)
+                    throw new InvalidOperationException("User not found.");
+
+                // Generate a strong temporary password
+                string temporaryPassword = "Gz#" + Guid.NewGuid().ToString("N").Substring(0, 8) + "!";
+                
+                var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var result = await _userManager.ResetPasswordAsync(user, resetToken, temporaryPassword);
+
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+                    throw new InvalidOperationException($"Failed to reset password: {errors}");
+                }
+
+                user.RequiresPasswordReset = true;
+                user.TemporaryPasswordExpiryTime = DateTime.UtcNow.AddMinutes(15);
+                user.UpdatedAt = DateTime.UtcNow;
+
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                     var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                     throw new InvalidOperationException($"Failed to update user reset flags: {errors}");
+                }
+
+                Console.WriteLine($"[ResetPasswordToTemporary] Password for user {userId} reset successfully.");
+                return temporaryPassword;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ResetPasswordToTemporary] Error: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task CompletePasswordResetAsync(string email, string newPassword)
+        {
+            try
+            {
+                var user = await _userManager.FindByEmailAsync(email);
+                if (user == null)
+                    throw new InvalidOperationException("User not found.");
+
+                var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var result = await _userManager.ResetPasswordAsync(user, resetToken, newPassword);
+
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+                    throw new InvalidOperationException($"Failed to change password: {errors}");
+                }
+
+                user.RequiresPasswordReset = false;
+                user.TemporaryPasswordExpiryTime = null;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                var updateResult = await _userManager.UpdateAsync(user);
+                 if (!updateResult.Succeeded)
+                {
+                     var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                     throw new InvalidOperationException($"Failed to clear user reset flags: {errors}");
+                }
+
+                Console.WriteLine($"[CompletePasswordReset] Password for user {email} changed successfully.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CompletePasswordReset] Error: {ex.Message}");
                 throw;
             }
         }
@@ -513,7 +607,22 @@ namespace Infrastructure.Identity
         {
             try
             {
-                Console.WriteLine($"[SetupTenantUser] Setting up account for: {dto.Email}");
+                Console.WriteLine($"[SetupTenantUser] Setting up account/resetting password for: {dto.Email}");
+
+                var existingUser = await _userManager.FindByEmailAsync(dto.Email);
+                if (existingUser != null)
+                {
+                    if (existingUser.RequiresPasswordReset)
+                    {
+                        // Handle the forced password reset flow
+                        await CompletePasswordResetAsync(dto.Email, dto.Password);
+                        return;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"An account for '{dto.Email}' has already been set up and does not require a password reset.");
+                    }
+                }
 
                 var tenant = await _dbContext.Tenants.FirstOrDefaultAsync(t => t.Email == dto.Email);
                 if (tenant == null)
@@ -524,12 +633,6 @@ namespace Infrastructure.Identity
                 if (!tenant.IsApproved)
                 {
                     throw new InvalidOperationException("Your tenant account is not yet approved.");
-                }
-
-                var existingUser = await _userManager.FindByEmailAsync(dto.Email);
-                if (existingUser != null)
-                {
-                    throw new InvalidOperationException($"An account for '{dto.Email}' has already been set up.");
                 }
 
                 bool isOrg = tenant.TenantType == "Business";

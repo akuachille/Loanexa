@@ -24,5 +24,9 @@ namespace Infrastructure.Identity
 
         // Admin Approval for self-registered users
         public bool IsApproved { get; set; } = false;
+
+        // Password Reset Flow
+        public bool RequiresPasswordReset { get; set; } = false;
+        public DateTime? TemporaryPasswordExpiryTime { get; set; }
     }
 }

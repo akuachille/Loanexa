@@ -171,13 +171,6 @@ using (var scope = app.Services.CreateScope())
         // Using a temporary password that satisfies default requirements (requires digit, uppercase, etc.)
         await userManager.CreateAsync(user, "12345678"); 
     }
-    else
-    {
-        var user = await userManager.FindByEmailAsync(devEmail);
-        user.PasswordHash = userManager.PasswordHasher.HashPassword(user, "12345678");
-        var result = await userManager.UpdateAsync(user);
-        Console.WriteLine($"[Seeder] Forced password update result: {result.Succeeded}");
-    }
 }
 
 app.Run();
