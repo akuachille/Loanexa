@@ -175,6 +175,14 @@ else
                                                    OnClick="@(() => OpenEditDialog(context.Id))"
                                                    Title="Edit User" />
                                 </AuthorizeView>
+                                @if (IsDeveloper)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.LockReset" 
+                                                   Color="Color.Warning" 
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => ResetUserPassword(context.Id, context.Email))"
+                                                   Title="Reset Password" />
+                                }
                             </MudButtonGroup>
                         </MudTd>
                     </RowTemplate>
@@ -303,6 +311,36 @@ else
         finally
         {
             isLoading = false;
+        }
+    }
+
+    private async Task ResetUserPassword(int userId, string email)
+    {
+        var confirmParameters = new DialogParameters { ["Email"] = email };
+        var confirmOptions = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var confirmDialog = await DialogService.ShowAsync<PasswordResetConfirmDialog>("", confirmParameters, confirmOptions);
+        var confirmResult = await confirmDialog.Result;
+
+        if (confirmResult != null && !confirmResult.Canceled)
+        {
+            try
+            {
+                string tempPassword = await IdentityService.ResetPasswordToTemporaryAsync(userId);
+                var resultParameters = new DialogParameters
+                {
+                    ["Email"] = email,
+                    ["TemporaryPassword"] = tempPassword
+                };
+
+                var resultOptions = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+                
+                await DialogService.ShowAsync<PasswordResetResultDialog>("", resultParameters, resultOptions);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error resetting password: {ex.Message}";
+                StateHasChanged();
+            }
         }
     }
 

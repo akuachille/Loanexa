@@ -41,6 +41,10 @@ namespace Web.Controllers
                     : $"/account/login?error=Invalid+email+or+password&returnUrl={Uri.EscapeDataString(returnUrl)}";
                 return Redirect(errorUrl);
             }
+            catch (InvalidOperationException ex) when (ex.Message == "REQUIRES_PASSWORD_RESET")
+            {
+                return Redirect($"/account/setup?Email={Uri.EscapeDataString(email)}");
+            }
             catch (Exception ex)
             {
                 var errorUrl = string.IsNullOrEmpty(returnUrl)

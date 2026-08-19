@@ -14,6 +14,8 @@ namespace Application.Interfaces
             Task LogoutAsync();
             Task ApproveUserAsync(int userId);
             Task ChangePasswordAsync(int userId, ChangePasswordDTO dto);
+            Task<string> ResetPasswordToTemporaryAsync(int userId);
+            Task CompletePasswordResetAsync(string email, string newPassword);
             
             Task RegisterSubUser(RegisterUserDTO dto, int parentPersonId);
             Task<List<UserDetailDTO>> GetSubUsers(int parentPersonId);

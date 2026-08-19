@@ -11,6 +11,8 @@ namespace Application.Services.Users
             Task<bool> LoginAsync(LoginDTO dto);
             Task LogoutAsync();
             Task ApproveUserAsync(int userId);
+            Task<string> ResetPasswordToTemporaryAsync(int userId);
+            Task CompletePasswordResetAsync(string email, string newPassword);
             Task RegisterSubUser(RegisterUserDTO dto, int parentPersonId);
             Task<List<UserDetailDTO>> GetSubUsers(int parentPersonId);
     Task CreateSubUserAsync(CreateSubUserDTO dto, int parentUserId);
