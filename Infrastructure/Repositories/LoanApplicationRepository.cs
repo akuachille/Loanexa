@@ -88,10 +88,19 @@ namespace Infrastructure.Repositories
             throw new Exception("One or more related entities required for loan application creation were not found.");
         }
 
-        var randomSuffix = new Random().Next(1000, 9999);
-        var generatedCode = !string.IsNullOrWhiteSpace(borrower.CompanyName)
-            ? $"LN-{DateTime.Now.Year}-{borrower.CompanyName}-{randomSuffix}"
-            : $"LN-{DateTime.Now.Year}-{borrower.FirstName}-{borrower.LastName}-{randomSuffix}";
+        int currentYear = DateTime.Now.Year;
+        int countThisYear = await dbContext.LoanApplications.CountAsync(la => la.DateofApplication.Year == currentYear);
+        
+        int seq = countThisYear + 1;
+        string generatedCode = $"APP-{currentYear}-{seq:D4}";
+        
+        // Guarantee uniqueness in case of deletions or parallel creations
+        while (await dbContext.LoanApplications.AnyAsync(la => la.ApplicationCode == generatedCode))
+        {
+            seq++;
+            generatedCode = $"APP-{currentYear}-{seq:D4}";
+        }
+
         var currentUserName = string.IsNullOrWhiteSpace(_userContext.FullName) ? _userContext.Email : _userContext.FullName;
         
             var _loanApplication = new LoanApplication

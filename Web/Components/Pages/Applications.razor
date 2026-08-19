@@ -64,10 +64,13 @@
                 <MudItem xs="6" sm="4" md="3" lg="2">
                     <MudCard Elevation="2" Class="pa-3">
                         <MudCardContent Class="px-3 py-2">
-                            <MudStack Spacing="1">
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">@statusCount.Status</MudText>
-                                <MudText Typo="Typo.h6" Style="font-weight: 600;">@statusCount.Count</MudText>
-                            </MudStack>
+                            <div class="d-flex justify-space-between align-center">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@statusCount.Status</MudText>
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600;">@statusCount.Count</MudText>
+                                </MudStack>
+                                <MudIcon Icon="@GetApplicationStatusIcon(statusCount.Status)" Color="@GetApplicationStatusColor(statusCount.Status)" Size="Size.Large" Style="opacity: 0.8;" />
+                            </div>
                         </MudCardContent>
                     </MudCard>
                 </MudItem>
@@ -206,6 +209,37 @@
          await LoadLoanApplication();
          
     }
+
+    private string GetApplicationStatusIcon(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "applied" => Icons.Material.Filled.Assignment,
+            "pending" => Icons.Material.Filled.HourglassEmpty,
+            "approved" => Icons.Material.Filled.CheckCircle,
+            "rejected" => Icons.Material.Filled.Cancel,
+            "disbursed" => Icons.Material.Filled.AccountBalanceWallet,
+            "active" => Icons.Material.Filled.PlayCircle,
+            "closed" => Icons.Material.Filled.Lock,
+            _ => Icons.Material.Filled.Article
+        };
+    }
+
+    private Color GetApplicationStatusColor(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "applied" => Color.Info,
+            "pending" => Color.Warning,
+            "approved" => Color.Success,
+            "rejected" => Color.Error,
+            "disbursed" => Color.Tertiary,
+            "active" => Color.Primary,
+            "closed" => Color.Default,
+            _ => Color.Primary
+        };
+    }
+
     private async Task OpenDialog()
     {
         DialogOptions options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };

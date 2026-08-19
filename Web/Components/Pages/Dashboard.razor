@@ -87,8 +87,9 @@
         padding: 16px 20px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.03), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         justify-content: space-between;
+        align-items: center;
         height: 110px;
         border: 1px solid rgba(255, 255, 255, 0.8);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -265,7 +266,6 @@
 
     <div class="main-grid">
         <MudGrid Spacing="3">
-            <!-- Top: Performance Stats -->
             <MudItem xs="12" lg="12">
                 <div class="performance-card">
                     <MudGrid Spacing="2">
@@ -275,6 +275,7 @@
                                     <div class="stat-label">Applied</div>
                                     <div class="stat-value">@CountApplied</div>
                                 </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Assignment" Style="color: #4318FF; opacity: 0.8;" Size="MudBlazor.Size.Large" />
                             </div>
                         </MudItem>
                         <MudItem xs="6" md="3">
@@ -283,6 +284,7 @@
                                     <div class="stat-label">Approved</div>
                                     <div class="stat-value">@CountApproved</div>
                                 </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Style="color: #05CD99; opacity: 0.8;" Size="MudBlazor.Size.Large" />
                             </div>
                         </MudItem>
                         <MudItem xs="6" md="3">
@@ -291,6 +293,7 @@
                                     <div class="stat-label">Rejected</div>
                                     <div class="stat-value">@CountRejected</div>
                                 </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Cancel" Style="color: #EE5D50; opacity: 0.8;" Size="MudBlazor.Size.Large" />
                             </div>
                         </MudItem>
                         <MudItem xs="6" md="3">
@@ -299,6 +302,7 @@
                                     <div class="stat-label">Disbursed</div>
                                     <div class="stat-value">@CountDisbursed</div>
                                 </div>
+                                <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Style="color: #7047EB; opacity: 0.8;" Size="MudBlazor.Size.Large" />
                             </div>
                         </MudItem>
                     </MudGrid>
