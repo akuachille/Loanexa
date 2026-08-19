@@ -90,6 +90,9 @@ namespace Application.Services.Penalities
                     if (DateTime.Now.Date > effectiveDueDate.Date && amountPaidForInstallment < scheduledPayment)
                     {
                         decimal shortfall = scheduledPayment - amountPaidForInstallment;
+                        decimal feeRate = disbursement.LoanApplication?.LoanProductSetting?.PenalityRate ?? 0m;
+                        decimal penaltyAmount = shortfall * (feeRate / 100m);
+
                         int installmentNo = i + 1;
                         string descriptionTag = $"[Auto-Inst#{installmentNo}]";
                         
@@ -97,14 +100,14 @@ namespace Application.Services.Penalities
                                                                && p.Description != null 
                                                                && p.Description.Contains(descriptionTag));
 
-                        if (!penaltyExists)
+                        if (!penaltyExists && penaltyAmount > 0)
                         {
                             var penaltyDTO = new CreatePenalityDTO
                             {
                                 LoanApplicationId = disbursement.LoanApplicationId,
-                                Amount = shortfall,
+                                Amount = penaltyAmount,
                                 ReasonId = lateReason?.Id ?? 0,
-                                Description = $"{descriptionTag} Automatic Late Penalty."
+                                Description = $"{descriptionTag} Automatic Late Penalty. (Shortfall: {shortfall:N2} | {feeRate:F2}% Fee: {penaltyAmount:N2})"
                             };
 
                             if (penaltyDTO.ReasonId > 0)
