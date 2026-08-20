@@ -114,7 +114,7 @@
     {
         if (item == null) return;
 
-        var result = await DialogService.ShowMessageBox(
+        var result = await DialogService.ShowCustomConfirmDialogAsync(
             "Delete Collateral Asset",
             $"Are you sure you want to delete the collateral asset: {item.AssetName}?",
             yesText: "Delete", cancelText: "Cancel");

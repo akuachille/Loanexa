@@ -90,7 +90,7 @@
                 {
                     <MudText Color="Color.Primary" Typo="Typo.subtitle2">@_selectedItems.Count Selected</MudText>
                     <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" OnClick="@(() => OpenDetailDialog(_selectedItems.First().Id))" />
-                    @if (UserContext.PrimaryRole == "Developer" || UserContext.PrimaryRole == "Tenant" || UserContext.PrimaryRole == "Manager")
+                    @if (UserContext.PrimaryRole == "Super" || UserContext.PrimaryRole == "Tenant" || UserContext.PrimaryRole == "Manager")
                     {
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"  OnClick="@(() => OpenEditDialog(_selectedItems.First().Id))" />
                     }
@@ -254,7 +254,7 @@
              var followUpParams = new DialogParameters { ["PreselectedLoanApplicationId"] = createdLoanApplication.Id };
 
              // First Reminder: Guarantor
-             var addGuarantor = await DialogService.ShowMessageBox("Reminder", "Do you want to add a Guarantor for this application?", yesText: "Yes", cancelText: "No");
+             var addGuarantor = await DialogService.ShowCustomConfirmDialogAsync("Reminder", "Do you want to add a Guarantor for this application?", yesText: "Yes", cancelText: "No");
              if (addGuarantor == true)
              {
                  var guarantorDialog = await DialogService.ShowAsync<CreateGuarantorDialog>("Add Guarantor", followUpParams, options);
@@ -262,7 +262,7 @@
              }
 
              // Second Reminder: Collateral
-             var addCollateral = await DialogService.ShowMessageBox("Reminder", "Do you want to add Collateral for this application?", yesText: "Yes", cancelText: "No");
+             var addCollateral = await DialogService.ShowCustomConfirmDialogAsync("Reminder", "Do you want to add Collateral for this application?", yesText: "Yes", cancelText: "No");
              if (addCollateral == true)
              {
                  var collateralDialog = await DialogService.ShowAsync<CollateralCreateDialog>("Add Collateral", followUpParams, options);
@@ -270,7 +270,7 @@
              }
 
              // Third Reminder: Document
-             var addDocument = await DialogService.ShowMessageBox("Reminder", "Do you want to attach a Document for this application?", yesText: "Yes", cancelText: "No");
+             var addDocument = await DialogService.ShowCustomConfirmDialogAsync("Reminder", "Do you want to attach a Document for this application?", yesText: "Yes", cancelText: "No");
              if (addDocument == true)
              {
                  var documentDialog = await DialogService.ShowAsync<DocumentCreateDialog>("Add Document", followUpParams, options);
@@ -385,7 +385,7 @@
             return;
         }
 
-        var result = await DialogService.ShowMessageBox(
+        var result = await DialogService.ShowCustomConfirmDialogAsync(
             "Delete Loan Application",
             $"Are you sure you want to delete the loan application {selected.ApplicationCode}?",
             yesText: "Delete", cancelText: "Cancel");

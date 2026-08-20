@@ -1,0 +1,40 @@
+<MudDialog Style="overflow:hidden; max-width: 500px; width: 100%;">
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 600;">@Title</MudText>
+        }
+        <MudText Typo="Typo.body1" Style="font-size: 1.2rem; line-height: 1.6;">
+            @((MarkupString)ContentText)
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        @if (!string.IsNullOrEmpty(CancelText))
+        {
+            <MudButton OnClick="Cancel" Variant="Variant.Text" Style="font-size: 1.1rem;">@CancelText</MudButton>
+        }
+        @if (!string.IsNullOrEmpty(YesText))
+        {
+            <MudButton OnClick="Confirm" Variant="Variant.Filled" Color="Color.Primary" Style="font-size: 1.1rem;">@YesText</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+    
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string ContentText { get; set; }
+    [Parameter] public string YesText { get; set; } = "Yes";
+    [Parameter] public string CancelText { get; set; } = "No";
+    
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+    
+    private void Confirm()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

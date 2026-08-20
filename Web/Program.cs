@@ -146,7 +146,7 @@ using (var scope = app.Services.CreateScope())
     {
         var person = new Domain.Entities.Person
         {
-            FirstName = "Developer",
+            FirstName = "Super",
             LastName = "Admin",
             Email = devEmail,
             CreatedBy = "System",
@@ -161,7 +161,7 @@ using (var scope = app.Services.CreateScope())
         { 
             UserName = devEmail, 
             Email = devEmail, 
-            FirstName = "Developer", 
+            FirstName = "Super", 
             LastName = "Admin",
             EmailConfirmed = true,
             PersonId = person.Id,

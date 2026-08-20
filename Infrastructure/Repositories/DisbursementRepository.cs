@@ -342,7 +342,7 @@ namespace Infrastructure.Repositories
                         AccountId = disbursementDTO.AccountId,
                         PersonId = loanApp.PersonId,
                         PaymentType = paymentType,
-                        Amount = totalInterest,
+                        Amount = 0,
                         PrincipalPaid = 0,
                         InterestPaid = totalInterest,
                         PenaltyPaid = 0,

@@ -105,7 +105,7 @@ namespace Infrastructure.Identity
                 var role = Roles.FirstOrDefault();
                 if (string.IsNullOrEmpty(role))
                 {
-                    return Email == "guriza291@gmail.com" ? "Developer" : "Tenant";
+                    return Email == "guriza291@gmail.com" ? "Super" : "Tenant";
                 }
 
                 if (role.Contains("_"))

@@ -77,24 +77,13 @@ namespace Infrastructure.Repositories
                 
                 account.Balance += paymentDTO.Amount;
 
-                // 6. Calculate Interest, Penalty vs Principal
+                // 6. Calculate Penalty, Interest vs Principal
                 decimal penaltyPart = 0;
                 decimal interestPart = 0;
                 decimal principalPart = 0;
                 decimal remainingPayment = paymentDTO.Amount;
 
-                // 1. Interest
-                if (disbursement.TotalInstallments > 0 && remainingPayment > 0)
-                {
-                    decimal totalInterest = disbursement.PrincipalOffered * (disbursement.InterestRate / 100);
-                    decimal totalInterestPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.InterestPaid);
-                    decimal unpaidInterest = Math.Max(0, totalInterest - totalInterestPaid);
-                    
-                    interestPart = Math.Min(remainingPayment, unpaidInterest);
-                    remainingPayment -= interestPart;
-                }
-
-                // 2. Penalty
+                // 1. Penalty
                 if (remainingPayment > 0)
                 {
                     decimal totalPenalties = await context.Penalties.Where(p => p.LoanApplicationId == disbursement.LoanApplicationId && p.IsActive).SumAsync(p => p.Amount);
@@ -103,6 +92,21 @@ namespace Infrastructure.Repositories
 
                     penaltyPart = Math.Min(remainingPayment, unpaidPenalties);
                     remainingPayment -= penaltyPart;
+                }
+
+                // 2. Interest — capped to the interest due for ONE installment
+                //    e.g. debt=1000, interest=30, 2 installments => each installment interest = 15
+                if (disbursement.TotalInstallments > 0 && remainingPayment > 0)
+                {
+                    decimal totalInterest = disbursement.PrincipalOffered * (disbursement.InterestRate / 100);
+                    decimal interestPerInstallment = totalInterest / disbursement.TotalInstallments;
+                    decimal totalInterestPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.InterestPaid);
+                    decimal unpaidInterest = Math.Max(0, totalInterest - totalInterestPaid);
+
+                    // Cap to per-installment interest so one payment doesn't clear ALL interest at once
+                    decimal interestCap = Math.Min(unpaidInterest, interestPerInstallment);
+                    interestPart = Math.Min(remainingPayment, interestCap);
+                    remainingPayment -= interestPart;
                 }
 
                 // 3. Principal
@@ -231,24 +235,13 @@ namespace Infrastructure.Repositories
                 // 5. Add Penalty to the Loan Balance (Reflected in Loan Details)
                 disbursement.Amount += penaltyAmount;
 
-                // 6. Calculate Interest, Penalty vs Principal
+                // 6. Calculate Penalty, Interest vs Principal
                 decimal penaltyPart = 0;
                 decimal interestPart = 0;
                 decimal principalPart = 0;
                 decimal remainingPayment = paymentDTO.Amount;
 
-                // 1. Interest
-                if (disbursement.TotalInstallments > 0 && remainingPayment > 0)
-                {
-                    decimal totalInterest = disbursement.PrincipalOffered * (disbursement.InterestRate / 100);
-                    decimal totalInterestPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.InterestPaid);
-                    decimal unpaidInterest = Math.Max(0, totalInterest - totalInterestPaid);
-                    
-                    interestPart = Math.Min(remainingPayment, unpaidInterest);
-                    remainingPayment -= interestPart;
-                }
-
-                // 2. Penalty
+                // 1. Penalty
                 if (remainingPayment > 0)
                 {
                     decimal totalPenalties = await context.Penalties.Where(p => p.LoanApplicationId == disbursement.LoanApplicationId && p.IsActive).SumAsync(p => p.Amount);
@@ -259,6 +252,21 @@ namespace Infrastructure.Repositories
 
                     penaltyPart = Math.Min(remainingPayment, unpaidPenalties);
                     remainingPayment -= penaltyPart;
+                }
+
+                // 2. Interest — capped to the interest due for ONE installment
+                //    e.g. debt=1000, interest=30, 2 installments => each installment interest = 15
+                if (disbursement.TotalInstallments > 0 && remainingPayment > 0)
+                {
+                    decimal totalInterest = disbursement.PrincipalOffered * (disbursement.InterestRate / 100);
+                    decimal interestPerInstallment = totalInterest / disbursement.TotalInstallments;
+                    decimal totalInterestPaid = disbursement.Payments.Where(p => p.IsActive).Sum(p => p.InterestPaid);
+                    decimal unpaidInterest = Math.Max(0, totalInterest - totalInterestPaid);
+
+                    // Cap to per-installment interest so one payment doesn't clear ALL interest at once
+                    decimal interestCap = Math.Min(unpaidInterest, interestPerInstallment);
+                    interestPart = Math.Min(remainingPayment, interestCap);
+                    remainingPayment -= interestPart;
                 }
 
                 // 3. Principal

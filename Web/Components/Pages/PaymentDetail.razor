@@ -789,9 +789,18 @@
                 availablePaidPool = 0;
             }
 
-            decimal principalPaidForInst = Math.Min(principalPerInst, amountPaidForInst);
-            decimal interestPaidForInst = Math.Min(interestPerInst, Math.Max(0, amountPaidForInst - principalPaidForInst));
-            decimal penaltyPaidForInst = Math.Min(penaltyPerInst, Math.Max(0, amountPaidForInst - principalPaidForInst - interestPaidForInst));
+            // Allocation order matches backend: penalty → interest (capped to per-installment) → principal
+            // e.g. 1000 debt, 30 interest, 2 installments: each installment interest = 15, principal = 500
+            decimal remainingForAlloc = amountPaidForInst;
+
+            decimal penaltyPaidForInst = Math.Min(penaltyPerInst, remainingForAlloc);
+            remainingForAlloc -= penaltyPaidForInst;
+
+            // Interest capped to this installment's share, NOT all remaining interest
+            decimal interestPaidForInst = Math.Min(interestPerInst, remainingForAlloc);
+            remainingForAlloc -= interestPaidForInst;
+
+            decimal principalPaidForInst = Math.Min(principalPerInst, remainingForAlloc);
 
             decimal instRemaining = scheduledPerInst - amountPaidForInst;
             if (instRemaining < 0) instRemaining = 0;

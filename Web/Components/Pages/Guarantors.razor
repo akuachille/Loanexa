@@ -247,7 +247,7 @@
         var selected = _selectedItems.FirstOrDefault();
         if (selected == null) return;
 
-        var result = await DialogService.ShowMessageBox(
+        var result = await DialogService.ShowCustomConfirmDialogAsync(
             "Delete Guarantor",
             $"Are you sure you want to delete guarantor {selected.FirstName} {selected.LastName}?",
             yesText: "Delete", cancelText: "Cancel");

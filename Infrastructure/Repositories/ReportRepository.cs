@@ -377,7 +377,7 @@ namespace Infrastructure.Repositories
                     DateTime effectiveDueDate = overdueDate.AddDays(gracePeriodDays);
                     var daysPastDue = (DateTime.Now.Date - effectiveDueDate.Date).Days;
                     
-                    string risk = daysPastDue >= 90 ? "Written-Off" : (daysPastDue >= 30 ? "Defaulter" : "Trustable");
+                    string risk = daysPastDue >= 90 ? "Written-Off" : (daysPastDue >= 30 ? "Defaulter" : "Normal");
 
                     overdueList.Add(new OverdueReportDTO
                     {

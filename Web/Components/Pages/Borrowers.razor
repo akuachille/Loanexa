@@ -87,7 +87,7 @@
                 {
                     <MudText Color="Color.Primary" Typo="Typo.subtitle2">@_selectedItems.Count Selected</MudText>
                     <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" OnClick="@(() => OpenDetailDialog(_selectedItems.First().Id))" />
-                    @if (UserContext.PrimaryRole == "Developer" || UserContext.PrimaryRole == "Tenant" || UserContext.PrimaryRole == "Manager")
+                    @if (UserContext.PrimaryRole == "Super" || UserContext.PrimaryRole == "Tenant" || UserContext.PrimaryRole == "Manager")
                     {
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"  OnClick="@(() => OpenEditDialog(_selectedItems.First().Id))" />
                     }
@@ -273,7 +273,7 @@
 
         var name = string.IsNullOrEmpty(selected.CompanyName) ? $"{selected.FirstName} {selected.LastName}" : selected.CompanyName;
 
-        var result = await DialogService.ShowMessageBox(
+        var result = await DialogService.ShowCustomConfirmDialogAsync(
             "Delete Borrower",
             $"Are you sure you want to delete borrower {name}?",
             yesText: "Delete", cancelText: "Cancel");
