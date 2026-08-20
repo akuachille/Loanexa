@@ -433,7 +433,7 @@ public async Task<List<TransactionHistoryDTO>> GetTransactionHistoryAsync(int lo
                 DateTime overdueDate = DateTime.MinValue;
                 bool isOverdue = false;
 
-                for (int i = 0; i < totalInstallments; i++)
+                for (int i = 1; i <= totalInstallments; i++)
                 {
                     DateTime dueDate = mode switch
                     {
@@ -467,7 +467,9 @@ public async Task<List<TransactionHistoryDTO>> GetTransactionHistoryAsync(int lo
                     if (daysPastDue >= 90)
                     {
                         d.LoanApplication.Status = LoanStatus.WrittenOff;
+                        d.UpdatedAt = DateTime.Now;
                         dbContext.LoanApplications.Update(d.LoanApplication);
+                        dbContext.Disbursements.Update(d);
                         updatedCount++;
                     }
                 }

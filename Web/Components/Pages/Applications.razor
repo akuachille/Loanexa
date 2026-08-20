@@ -221,6 +221,7 @@
             "disbursed" => Icons.Material.Filled.AccountBalanceWallet,
             "active" => Icons.Material.Filled.PlayCircle,
             "closed" => Icons.Material.Filled.Lock,
+            "rescheduled" => Icons.Material.Filled.EventRepeat,
             _ => Icons.Material.Filled.Article
         };
     }
@@ -236,6 +237,7 @@
             "disbursed" => Color.Tertiary,
             "active" => Color.Primary,
             "closed" => Color.Default,
+            "rescheduled" => Color.Warning,
             _ => Color.Primary
         };
     }
@@ -298,9 +300,10 @@
         {
         return status.ToString() switch
         {
-            "Applied" => Color.Warning,
+            "Applied" => Color.Info,
             "Approved" => Color.Success,
             "Rejected" => Color.Error,
+            "Rescheduled" => Color.Warning,
             _ => Color.Default
         };
        }

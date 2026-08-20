@@ -20,6 +20,7 @@
 @using MudBlazor
 @using System.IO
 
+@inject ILoanApplicationService LoanApplicationService
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
@@ -314,9 +315,9 @@
                                 <MudTh>Loan Code</MudTh>
                                 <MudTh>Inst #</MudTh>
                                 <MudTh>Due Date</MudTh>
-                                <MudTh Style="text-align: right;">Principal Part</MudTh>
-                                <MudTh Style="text-align: right;">Interest Part</MudTh>
-                                <MudTh Style="text-align: right;">Penalty Part</MudTh>
+                                <MudTh Style="text-align: right;">Principal</MudTh>
+                                <MudTh Style="text-align: right;">Interest</MudTh>
+                                <MudTh Style="text-align: right;">Penalty</MudTh>
                                 <MudTh Style="text-align: right;">Total Installment</MudTh>
                                 <MudTh Style="text-align: right;">Amount Paid</MudTh>
                                 <MudTh Style="text-align: right;">Remaining Balance</MudTh>
@@ -684,6 +685,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        try { await LoanApplicationService.UpdateWrittenOffLoansAsync(); } catch { }
+
         _breadcrumbItems = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),

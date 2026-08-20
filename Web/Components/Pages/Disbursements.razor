@@ -4,6 +4,7 @@
 @using MudBlazor
 @inject IDisbursementService DisbursementService
 @inject IDialogService DialogService
+@inject Application.Services.LoanApplications.ILoanApplicationService LoanApplicationService
 
 <PageTitle>Disbursements</PageTitle>
 
@@ -146,6 +147,7 @@
     private DateTime? _filterDate = null;
 
     private IEnumerable<Disbursement> FilteredDisbursements => _disbursements
+        .Where(x => x.LoanApplication?.Status != Domain.ValueObjects.LoanStatus.Rescheduled && x.LoanApplication?.Status != Domain.ValueObjects.LoanStatus.Rejected)
         .Where(x => string.IsNullOrWhiteSpace(_filterCode) || 
                     (x.LoanApplication?.ApplicationCode != null && x.LoanApplication.ApplicationCode.Contains(_filterCode, StringComparison.OrdinalIgnoreCase)))
         .Where(x => string.IsNullOrWhiteSpace(_filterBorrower) ||
@@ -159,6 +161,7 @@
     
     protected override async Task OnInitializedAsync()
     {
+        try { await LoanApplicationService.UpdateWrittenOffLoansAsync(); } catch { }
         await LoadDisbursements();
     }
 

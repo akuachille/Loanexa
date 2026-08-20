@@ -18,24 +18,24 @@
                 <MudGrid>
                     <MudItem xs="6">
                         <MudText Typo="Typo.body2" Color="Color.Secondary">Total Principal:</MudText>
-                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">@debt.TotalPrincipal.ToString("C")</MudText>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">@debt.TotalPrincipal.ToString("N2")</MudText>
                     </MudItem>
                     <MudItem xs="6">
                         <MudText Typo="Typo.body2" Color="Color.Secondary">Total Interest:</MudText>
-                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600; color: #f59e0b;">@debt.TotalInterest.ToString("C")</MudText>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600; color: #f59e0b;">@debt.TotalInterest.ToString("N2")</MudText>
                     </MudItem>
                     <MudItem xs="6">
                         <MudText Typo="Typo.body2" Color="Color.Secondary">Total Penalties:</MudText>
-                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600; color: #ef4444;">@debt.TotalPenalties.ToString("C")</MudText>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600; color: #ef4444;">@debt.TotalPenalties.ToString("N2")</MudText>
                     </MudItem>
                     <MudItem xs="6">
                         <MudText Typo="Typo.body2" Color="Color.Secondary">Total Paid:</MudText>
-                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600; color: #10b981;">@debt.TotalPaid.ToString("C")</MudText>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600; color: #10b981;">@debt.TotalPaid.ToString("N2")</MudText>
                     </MudItem>
                     <MudItem xs="12">
                         <MudDivider Class="my-2" />
                         <MudText Typo="Typo.body1" Color="Color.Primary" Style="font-weight: 700;">Remaining Balance:</MudText>
-                        <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight: 800;">@debt.RemainingBalance.ToString("C")</MudText>
+                        <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight: 800;">@debt.RemainingBalance.ToString("N2")</MudText>
                     </MudItem>
                 </MudGrid>
             </MudPaper>
