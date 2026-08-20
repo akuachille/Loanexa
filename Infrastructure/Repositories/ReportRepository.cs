@@ -527,6 +527,25 @@ namespace Infrastructure.Repositories
                 WaivingDate = w.ApprovedDate ?? DateTime.Now
             }).ToList();
 
+            // Find write-offs
+            var writeOffs = await dbContext.Disbursements
+                .Include(d => d.LoanApplication)
+                .Include(d => d.Payments)
+                .Where(d => (d.PersonId == currentPersonId.Value || d.LoanApplication.PersonId == currentPersonId.Value) &&
+                            d.LoanApplication.Status == Domain.ValueObjects.LoanStatus.WrittenOff &&
+                            d.UpdatedAt >= start && d.UpdatedAt < endExclusive)
+                .ToListAsync();
+
+            var writeOffDetails = writeOffs.Select(w => new WaiverDetailDTO {
+                LoanApplicationCode = w.LoanApplication?.ApplicationCode ?? "N/A",
+                AmountWaived = w.Amount - w.Payments.Where(p => p.IsActive).Sum(p => p.Amount),
+                WaiverType = "Write-Off",
+                WaivingDate = w.UpdatedAt
+            }).Where(w => w.AmountWaived > 0).ToList();
+
+            totalWaivers += writeOffDetails.Sum(w => w.AmountWaived);
+            waiverDetails.AddRange(writeOffDetails);
+
             // 4. Operating Expenses
             var expenses = await dbContext.Expenses
                 .Include(e => e.Account)

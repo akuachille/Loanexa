@@ -17,18 +17,15 @@
     @* --- DESIGN ADDITION: ACTION BAR --- *@
     <MudGrid Class="mb-4" Spacing="2">
         <MudItem xs="12" Class="d-flex align-center justify-end gap-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Payment" Class="rounded-pill px-6" Style="text-transform:none; font-weight: 600;" OnClick="GoToPayPenalty">
+                Pay Penalty
+            </MudButton>
             @if (_selectedItems.Any())
             {
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Payment" Class="rounded-pill px-6" Style="text-transform:none; font-weight: 600;" OnClick="GoToPayPenalty">
-                    Pay Penalty
-                </MudButton>
                 <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" Class="rounded-pill px-6" Style="text-transform:none; font-weight: 600;">
                     Delete Selected (@_selectedItems.Count)
                 </MudButton>
             }
-            <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add" Class="rounded-pill px-6" Style="background-color: #4318FF; color: white; text-transform:none; font-weight: 600;" OnClick="GoToCreatePenality">
-                New Penalty
-            </MudButton>
         </MudItem>
     </MudGrid>
 
@@ -67,7 +64,7 @@
             <PropertyColumn Property="x => x.Amount" Title="Amount">
                 <CellTemplate>
                     <MudText Typo="Typo.body2" Style="font-weight: 700; color: #ef4444;">
-                        @context.Item.Amount.ToString("C")
+                        @context.Item.Amount.ToString("N2")
                     </MudText>
                 </CellTemplate>
             </PropertyColumn>

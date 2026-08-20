@@ -32,8 +32,7 @@
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" />
                 <MudDivider Vertical="true" FlexItem="true" Class="mx-2" />
             }
-            <MudButton StartIcon="@Icons.Material.Filled.FilterList" Variant="Variant.Text">Filter</MudButton>
-            <MudButton StartIcon="@Icons.Material.Filled.Sort" Variant="Variant.Text">Sort by</MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.FilterList" Variant="Variant.Text" OnClick="@(() => _filterable = !_filterable)">Filter</MudButton>
         </MudItem>
      
         <MudItem xs="12" sm="6">
@@ -55,8 +54,9 @@
     </MudGrid>
 
     @* THE DATAGRID - GROUPED BY LOAN APPLICATION *@
-    <MudDataGrid T="LoanAppGroup" Items="@FilteredGroups"
+    <MudDataGrid T="LoanAppGroup" Items="@_appGroups" QuickFilter="@_quickFilter"
                  MultiSelection="true" @bind-SelectedItems="_selectedItems"
+                 Filterable="@_filterable" FilterMode="DataGridFilterMode.ColumnFilterRow"
                  Hover="true" Elevation="0" Class="rounded-xl border-none">
 
         <ToolBarContent>
@@ -96,27 +96,6 @@
                 </CellTemplate>
             </TemplateColumn>
 
-            @* Document Names Summary Column *@
-            <!-- <TemplateColumn Title="Attached Documents">
-                <CellTemplate>
-                    <div class="d-flex flex-wrap gap-1">
-                        @foreach (var doc in context.Item.Documents.Take(3))
-                        {
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">
-                                @doc.DocumentName
-                            </MudChip>
-                        }
-                        @if (context.Item.Documents.Count > 3)
-                        {
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">
-                                +@(context.Item.Documents.Count - 3) more
-                            </MudChip>
-                        }
-                    </div>
-                </CellTemplate>
-            </TemplateColumn> -->
-
-            @* Action Column *@
             <TemplateColumn Title="Action" Style="text-align: right;">
                 <CellTemplate>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.FolderOpen" OnClick="@(() => OpenAllAppDocuments(context.Item.LoanApplicationId, context.Item.ApplicationCode, context.Item.BusinessName))">
@@ -137,6 +116,7 @@
     private string _searchString = "";
     private List<LoanAppGroup> _appGroups = new();
     private HashSet<LoanAppGroup> _selectedItems = new();
+    private bool _filterable = false;
 
     public class LoanAppGroup
     {
@@ -148,12 +128,20 @@
         public List<ProvidedDocument> Documents { get; set; } = new();
     }
 
-    private IEnumerable<LoanAppGroup> FilteredGroups => _appGroups
-        .Where(x => string.IsNullOrWhiteSpace(_searchString) || 
-                    (x.ApplicationCode != null && x.ApplicationCode.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
-                    (x.BusinessName != null && x.BusinessName.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
-                    (x.ContactPerson != null && x.ContactPerson.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) ||
-                    x.Documents.Any(d => d.DocumentName != null && d.DocumentName.Contains(_searchString, StringComparison.OrdinalIgnoreCase)));
+    private Func<LoanAppGroup, bool> _quickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(_searchString))
+            return true;
+        if (x.ApplicationCode != null && x.ApplicationCode.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (x.BusinessName != null && x.BusinessName.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (x.ContactPerson != null && x.ContactPerson.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (x.Documents.Any(d => d.DocumentName != null && d.DocumentName.Contains(_searchString, StringComparison.OrdinalIgnoreCase)))
+            return true;
+        return false;
+    };
 
     protected override async Task OnInitializedAsync()
     {
